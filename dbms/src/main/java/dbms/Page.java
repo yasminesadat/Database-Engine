@@ -31,16 +31,6 @@ public class Page implements Serializable {
         return s[1];
     }
 
-    public Tuple getLastValue() {
-
-        return Records.get(Records.size() - 1);
-    }
-
-    public Tuple getFirstValue() {
-
-        return Records.get(0);
-    }
-
     public Page(String tableName, int pageNum) {
         try {
             Properties prop = new Properties();
@@ -123,11 +113,9 @@ public class Page implements Serializable {
      * compareTuples method but it needs only 2 parameters
      * which are tuples in order to implement it in the binary search method
      */
-
-    // enter here if page has space
+    // insert when there is space
     public void insertBinary(Hashtable<String, Object> value, String strClusteringKeyColumn) {
-        String[] s = pageName.split("_");
-        Tuple insertTuple = new Tuple(s[0], value);
+        Tuple insertTuple = new Tuple(getPageName(), value);
         // creare a Comparator to binary search on the tuples and compare based on the
         // clustering key
         int index = searchBinary(value, strClusteringKeyColumn);
@@ -139,6 +127,49 @@ public class Page implements Serializable {
         Records.add(index, insertTuple);
         numOfEntries++;
 
+    }
+
+    public Tuple insertAndDisplaceLast(Hashtable<String, Object> value, String strClusteringKeyColumn) {
+        // Create a tuple from the insert hashtable
+        Tuple insertTuple = new Tuple(getPageNum(), value);
+
+        // If the page is not full, simply insert the tuple
+        if (numOfEntries < maxEntries) {
+            insertBinary(value, strClusteringKeyColumn);
+            return null; // No tuple was displaced
+        } else {
+            // If the page is full, displace the last tuple
+            Tuple displacedTuple = Records.lastElement();
+
+            // Find the correct position for the new tuple and insert it
+            int index = searchBinary(value, strClusteringKeyColumn);
+            if (index < 0) {
+                index = -(index + 1); // Convert the insertion point
+            }
+            Records.add(index, insertTuple); // Insert the new tuple at the correct position
+
+            // Since the page was full, we remove the last tuple (now an extra element)
+            if (index <= Records.size() - 2) { // Check if the new tuple was not added to the end
+                Records.remove(Records.size() - 1); // Remove the last tuple
+            } else {
+                // If the new tuple was added to the end, remove the second last (now last)
+                // tuple
+                Records.remove(Records.size() - 2);
+            }
+
+            // Return the displaced tuple
+            return displacedTuple;
+        }
+    }
+
+    public Tuple getLastValue() {
+
+        return Records.get(Records.size() - 1);
+    }
+
+    public Tuple getFirstValue() {
+
+        return Records.get(0);
     }
 
     public int binarySearch(String strClusteringKey, Object clusteringKeyValue) {
@@ -168,16 +199,3 @@ public class Page implements Serializable {
     }
 
 }
-
-// public Tuple insertAndReturnOther(Tuple t1, Tuple t2, String
-// strClusteringKeyColumn) {
-// // this method compares the 2 tuples, inserts the minimum one and the 'other'
-// // returns it to be inserted in the next page;
-// if (compareTuples(t1, t2, strClusteringKeyColumn) <= 0) {
-// insertBinary(t1.getHtblTuple(), strClusteringKeyColumn);
-// return t2;
-// } else {
-// insertBinary(t2.getHtblTuple(), strClusteringKeyColumn);
-// return t1;
-// }
-// }

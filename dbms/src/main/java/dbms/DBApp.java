@@ -2,6 +2,8 @@ package dbms;
 
 /** * @author Wael Abouelsaadat */
 import bPlusTree.bplustree;
+import bPlusTree.bplustree.DictionaryPair;
+
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Vector;
@@ -248,42 +250,114 @@ public class DBApp {
 		// Returns {strClusteringKey, strClusteringColIndexName}
 		String[] clusteringData = checkDataForInsert(strTableName, htblColNameValue);
 
-		// Base case: no pages yet
 		Table t = deserializeTable(strTableName);
 		Vector<String> pages = t.getStrPages();
-		System.out.println("how many pages: " + pages.size());
+
+		// Base case: no pages yet
 		if (pages.size() == 0) {
 			Page p = new Page(strTableName, 1);
 			p.insertBinary(htblColNameValue, clusteringData[0]);
 			serializePage(p);
 			t.addNewPage();
+			// in case user creates indices before any tuples have been inserted
+			Hashtable<String, String> indices = loadAllIndices(strTableName);
+			for (String i : indices.keySet()) {
+				bplustree b = deserializeIndex(i);
+				b.insert(htblColNameValue.get(indices.get(i)), "1");
+				serializeIndex(b, i);
+			}
 		}
-		// Second case: no index on clusteringKey
-		else if (clusteringData[1].equals("null")) {
-			// Find Page
-			int x = binarySearchWithoutIndexForInsertion(strTableName, clusteringData[0],
-					htblColNameValue.get(clusteringData[0]));
-			System.out.println("Page number from binary search:" + x);
-			Page p = deserializePage(strTableName + "_" + x);
-			// page is not full
-			System.out.println("Page Size: " + p.getRecords().size());
-			if (p.getRecords().size() < p.getMaxEntries()) {
-				p.insertBinary(htblColNameValue, clusteringData[0]);
-				serializePage(p);
-			} else {
 
+		else {
+			// Find the page
+			String targetPage = "0";
+			// First case: no index on clusteringKey
+			if (clusteringData[1].equals("null")) {
+				targetPage = binarySearchWithoutIndexForInsertion(strTableName, clusteringData[0],
+						htblColNameValue.get(clusteringData[0])) + "";
+				System.out.println("Page number from binary search:" + targetPage);
+
+			} else { // Second case: index exists
+				bplustree b = deserializeIndex(clusteringData[1]);
+				Object insert = htblColNameValue.get(clusteringData[0]);
+				DictionaryPair[] dp = b.findLeafNodeShouldContainKey(insert);
+				// binary search on leaf node keys to find correct "in between" values
+				int i = 0;
+				int j = dp.length - 1;
+				// note: can't have duplicates for values in dp
+				while (j >= i) {
+					int mid = i + (j - i) / 2;
+					if (dp[mid].compare(insert) < 0 && mid != dp.length - 1 && dp[mid + 1].compare(insert) > 0) {
+						targetPage = dp[mid + 1].getValues().get(0);
+						break;
+					}
+					if (mid == 0 && dp[mid].compare(insert) > 0) {
+						targetPage = dp[mid].getValues().get(0);
+						break;
+					}
+					if (mid == dp.length - 1 && dp[mid].compare(insert) < 0) {
+						targetPage = dp[mid].getValues().get(0);
+						break;
+					}
+					if (dp[mid].compare(insert) > 0) {
+						j = mid - 1;
+					} else {
+						i = mid + 1;
+					}
+				}
 			}
 
-		} else { // Third Case: handle index exists
+			// page logic here
+			Page p = deserializePage(strTableName + "_" + targetPage);
+			// Insert the new tuple in the current page which will displace the last tuple
+			Tuple displacedTuple = p.insertAndDisplaceLast(htblColNameValue, clusteringData[0]);
+			// Prepare a list to track displaced elements and their page movements
+			Hashtable<Tuple, String> displacedElements = new Hashtable<>();
+			String displacedTuplePageNum = p.getPageNum();
+			serializePage(p);
+
+			// Propagate the displaced tuple to the next pages
+			while (displacedTuple != null) {
+				// Calculate the next page number
+				int nextPageNum = Integer.parseInt(displacedTuplePageNum) + 1;
+				Page nextPage;
+
+				// Check if the next page exists, if not create it
+				if (t.checkPageExists(strTableName + "_" + nextPageNum)) {
+					nextPage = deserializePage(strTableName + "_" + nextPageNum);
+				} else {
+					nextPage = new Page(strTableName, nextPageNum);
+					t.addNewPage(); // Assuming 't' is your Table object
+				}
+
+				// Insert the displaced tuple in the next page, which may displace another tuple
+				Tuple nextDisplacedTuple = nextPage.insertAndDisplaceLast(displacedTuple.getHtblTuple(),
+						clusteringData[0]);
+
+				// Track the movement of the displaced tuple
+				displacedElements.put(displacedTuple, displacedTuplePageNum);
+
+				// Prepare for the next iteration if there was a displacement
+				displacedTuple = nextDisplacedTuple;
+				displacedTuplePageNum = String.valueOf(nextPageNum);
+
+				// Serialize the updated page
+				serializePage(nextPage);
+
+				// At this point, displacedElements contains all the movements of displaced
+				// tuples
+
+			}
+			// update any indices for the table after successful insertion
+			// Hashtable<String, String> v = loadAllIndices(strTableName);for(
+			// String i:v.keySet())
+			// {
+			// bplustree b = deserializeIndex(i);
+			// // to be cont
+			// }
 
 		}
 
-		// update any indices for the table after successful insertion
-		Hashtable<String, String> v = loadAllIndices(strTableName);
-		for (String i : v.keySet()) {
-			bplustree b = deserializeIndex(i);
-			// to be cont
-		}
 		serializeTable(t);
 		t = null;
 
@@ -814,6 +888,7 @@ public class DBApp {
 
 	}
 
+	// returns key: indexName, value: ColName
 	public Hashtable<String, String> loadAllIndices(String strTableName) throws DBAppException {
 		Hashtable<String, String> indices = new Hashtable<>();
 		try {
@@ -828,7 +903,7 @@ public class DBApp {
 				if (s[0].equals(strTableName)) {
 					foundTable = true;
 					if (!s[4].equals("null")) {
-						indices.put(s[1], s[4]);
+						indices.put(s[4], s[1]);
 					}
 
 				}

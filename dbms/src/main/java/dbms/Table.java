@@ -43,6 +43,10 @@ public class Table implements Serializable {
         strPages.add(strTableName + "_" + nextPageNum++);
     }
 
+    public boolean checkPageExists(String pageName) {
+        return strPages.contains(pageName);
+    }
+
     // return the column and its datatype
     public String getStrClusteringKeyColumn() {
         String clusteringKey = "";

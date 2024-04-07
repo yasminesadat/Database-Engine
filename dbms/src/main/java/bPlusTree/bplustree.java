@@ -1406,6 +1406,10 @@ public class bplustree implements Serializable {
             this.values.add(values); // first value in vector
         }
 
+        public Vector<String> getValues() {
+            return values;
+        }
+
         /**
          * This is a method that allows comparisons to take place between
          * DictionaryPair objects in order to sort them later on
@@ -1426,6 +1430,25 @@ public class bplustree implements Serializable {
             } else {
                 String a = (String) key;
                 String b = (String) o.key;
+                return a.compareTo(b);
+
+            }
+
+        }
+
+        // added
+        public int compare(Object o) {
+            if (o.getClass().getSimpleName().equals("Integer")) {
+                Integer a = (Integer) key;
+                Integer b = (Integer) o;
+                return a.compareTo(b);
+            } else if (o.getClass().getSimpleName().equals("Double")) {
+                Double a = (Double) key;
+                Double b = (Double) o;
+                return a.compareTo(b);
+            } else {
+                String a = (String) key;
+                String b = (String) o;
                 return a.compareTo(b);
 
             }
@@ -1496,13 +1519,7 @@ public class bplustree implements Serializable {
         }
     }
 
-    /**
-     * Search the leaf node which should contain the specified key.
-     * 
-     * @param key the key to search for in the B+ tree
-     * @return the LeafNode that should contain the specified key
-     */
-    private LeafNode findLeafNodeShouldContainKey(Object key) {
+    public DictionaryPair[] findLeafNodeShouldContainKey(Object key) {
         Node node = this.root;
         while (node instanceof InternalNode) {
             InternalNode internalNode = (InternalNode) node;
@@ -1519,7 +1536,8 @@ public class bplustree implements Serializable {
             node = internalNode.childPointers[i];
         }
 
-        return (LeafNode) node;
+        return ((LeafNode) node).dictionary;
+
     }
 
     public static void main(String[] args) {
