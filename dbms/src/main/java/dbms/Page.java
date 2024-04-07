@@ -55,9 +55,9 @@ public class Page implements Serializable {
     public String toString() {
         String s = "";
         for (int i = 0; i < numOfEntries; i++) {
-            s += Records.get(i).toString() + "\n";
+            s += Records.get(i).toString() + ", ";
         }
-        return s;
+        return s.substring(0, s.length() - 2);
     }
 
     public Vector<Tuple> getRecords() {

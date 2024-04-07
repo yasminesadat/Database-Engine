@@ -1403,7 +1403,7 @@ public class bplustree implements Serializable {
             if (o.key.getClass().getSimpleName().equals("Integer")) {
                 Integer a = (Integer) key;
                 Integer b = (Integer) o.key;
-                return a - b;
+                return a.compareTo(b);
             } else if (o.key.getClass().getSimpleName().equals("Double")) {
                 Double a = (Double) key;
                 Double b = (Double) o.key;
@@ -1509,32 +1509,47 @@ public class bplustree implements Serializable {
         // b2.insert(6.7, null);
         // b2.printTree();
 
-        // bplustree b3 = new bplustree(5);
-        // b3.insert("seif", null);
-        // b3.insert("sameh", null);
-        // b3.insert("ahmed", null);
-        // b3.insert("yasmine", null);
-        // b3.insert("ziad", null);
-        // b3.printTree();
+        bplustree b3 = new bplustree(3);
+        b3.insert("seif", "5");
+        b3.insert("seif", "6");
+        b3.insert("seif", "7");
+        b3.insert("yasmine", null);
+        b3.insert("ziad", null);
+        b3.printTree();
+        b3.insert("ahmed", "9");
+        b3.printTree();
+        b3.delete("ahmed", "9");
+        b3.delete("ziad", null);
+        b3.printTree();
+        b3.insert("ahmed", null);
+        b3.printTree();
+        b3.insert("ahmed2", null);
+        b3.printTree();
+        b3.insert("ahmed3", null);
+        b3.printTree();
+        b3.delete("ahmed1", "null");
+        b3.delete("ahmed2", null);
+        b3.printTree();
+        // bplustree b4 = new bplustree(3);
+        // b4.insert(20, "3");
+        // b4.insert(21, "5");
+        // b4.insert(20, "5");
+        // b4.insert(20, "5");
+        // b4.insert(8, "5");
+        // b4.insert(2, "5");
+        // b4.insert(3, "5");
+        // b4.insert(2, "9");
+        // b4.insert(5, "9");
+        // b4.printTree();
+        // b4.delete(5, "5");
+        // b4.printTree();
+        // // assume index on name->find name=seif from hashtable in delete
+        // Vector<String> finalPages = b3.search("seif");
+        // System.out.println(finalPages);
+        // // here loop on all other indices
+        // // this age index->find age=20
+        // Vector<String> temp = b4.search(20);
 
-        bplustree b4 = new bplustree(3);
-        b4.insert(1, "3");
-        b4.insert(6, "5");
-        b4.insert(4, "5");
-        b4.insert(5, "5");
-        b4.insert(8, "5");
-        b4.insert(2, "5");
-        b4.insert(3, "5");
-        b4.insert(2, "9");
-        b4.insert(5, "9");
-        b4.printTree();
-        b4.delete(5, "5");
-        b4.printTree();
-        Vector<String> n = b4.search(8);
-
-        System.out.println(n);
-        n = b4.search(5);
-        System.out.println(n);
     }
 
 }

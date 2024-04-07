@@ -123,26 +123,26 @@ public class DBApp {
 
 		boolean tableExists = false;
 		boolean columnExists = false;
-		boolean indexExists = false;
 		BufferedReader br = null;
 		String line = "";
 		try {
 			br = new BufferedReader(new FileReader(METADATA_PATH));
 			while ((line = br.readLine()) != null) {
 				String[] s = line.split(", ");
-				if (tableExists && !s[0].equals(strTableName)) {
-					br.close();
-					break;
-				}
 				if (s[0].equals(strTableName)) {
 					tableExists = true;
-					if (s[1].equals(strColName))
+					if (s[1].equals(strColName)) {
 						columnExists = true;
-					if (s[4].equals(strIndexName) && s[5].equals("B+tree")) {
-						indexExists = true;
-						br.close();
-						break;
+						if (!s[4].equals("null") && s[5].equals("B+tree")) {
+							br.close();
+							throw new DBAppException("CREATE INDEX: Index already exists with the name " + s[4]);
+						}
 					}
+				}
+				if (s[4].equals(strIndexName)) {
+					br.close();
+					throw new DBAppException(
+							"CREATE INDEX: Duplicate Index Name.");
 				}
 
 			}
@@ -156,9 +156,6 @@ public class DBApp {
 		}
 		if (!columnExists) {
 			throw new DBAppException("Column doesn't exist");
-		}
-		if (indexExists) {
-			throw new DBAppException("Index already exists");
 		}
 		bplustree bt = null;
 		try {
@@ -249,79 +246,7 @@ public class DBApp {
 			throw new DBAppException("INSERT INTO TABLE: Table doesn't exist");
 
 		// Check datatypes from csv and if clusteringKey is repeated
-		checkDataForInsert(strTableName, htblColNameValue);
-
-		// insert if page count is 0:
-		// create a new page and insert the tuple
-		Table table = deserializeTable(strTableName);
-		Vector<String> pageNames = table.getStrPages();
-		if (pageNames.size() == 0) {
-			Page newPage = new Page(strTableName, table.getNextPageNum());
-			table.setNextPageNum(table.getNextPageNum() + 1);
-			newPage.insertBinary(htblColNameValue, strTableName);
-			serializePage(newPage);
-			pageNames.add(newPage.getPageName());
-		}
-		// if page count is not 0
-		else {
-			// loop through the pages and check the first page that is not full
-
-			// other is the overflow record
-			Tuple other = null;
-			int i = 0;
-			do {
-				// if we reached the end of the pages
-				// we will insert either the input record
-				// or the overflow record
-				if (i == pageNames.size()) {
-					Page p = new Page(strTableName, table.getNextPageNum());
-					table.setNextPageNum(table.getNextPageNum() + 1);
-					table.getStrPages().add(p.getPageName());
-					// no overflow record so we directly insert the tuple
-					if (other == null) {
-						p.insertBinary(htblColNameValue, strTableName);
-					} else {
-						// there is an overflow record so we insert the tuple in
-						// the overflow record
-						p.insertBinary(other.getHtblTuple(), strTableName);
-					}
-					serializePage(p);
-				} else {
-					Page p = deserializePage(pageNames.get(i));
-
-					if (p.getNumOfEntries() < p.getMaxEntries()) {
-						// i didnt insert the input record still
-						//
-						if (other == null) {
-							p.insertBinary(htblColNameValue, table.getStrClusteringKeyColumn());
-						} else {
-							/*
-							 * it means I inserted the input record and i finally found an available page
-							 * for the overflow record
-							 */
-							p.insertBinary(other.getHtblTuple(), table.getStrClusteringKeyColumn());
-						}
-
-						other = null; // this is to exit the loop
-
-					} else {
-						// We get the last element in the page
-						Tuple last = p.getRecords().remove(p.getRecords().size() - 1);
-						// We made it into a tuple to insert it into the insertAndReturnOther method
-						Tuple insert = new Tuple(strTableName, htblColNameValue);
-						// this method compares 2 tuples, whatever is smaller
-						// gets inserted into the current page and the larger one
-						// is assigned to the overflow 'other' attribute
-						other = p.insertAndReturnOther(last, insert, strTableName);
-
-					}
-					i++;
-					serializePage(p);
-				}
-			} while ((other != null));
-
-		}
-		serializeTable(table);
+		String clusteringIndexName = checkDataForInsert(strTableName, htblColNameValue);
 
 	}
 
@@ -341,7 +266,7 @@ public class DBApp {
 		String datatype = "";
 		String line = "";
 		String index = "";
-		Vector<String> otherIndices = new Vector<>(); // to be updated->(columnName,indexName)
+		Hashtable<String, String> otherIndices = new Hashtable<>(); // to be updated->(columnName,indexName)
 		try {
 			BufferedReader br = new BufferedReader(new FileReader(METADATA_PATH));
 			boolean foundTable = false;
@@ -357,7 +282,7 @@ public class DBApp {
 					index = s[4];
 					foundTable = true;
 				} else if (s[0].equals(strTableName) && htblColNameValue.containsKey(s[1]) && !s[4].equals("null")) {
-					otherIndices.add(s[1] + "," + s[4]);
+					otherIndices.put(s[1], s[4]);
 				}
 
 			}
@@ -402,12 +327,11 @@ public class DBApp {
 				Tuple row = records.get(i);
 				Hashtable<String, Object> hashtable = row.getHtblTuple();
 				// colName,indexName
-				for (String ref : otherIndices) {
-					String[] s = ref.split(",");
-					bplustree tree = deserializeIndex(s[1]);
-					tree.delete(hashtable.get(s[0]), x + "");
-					tree.insert(htblColNameValue.get(s[0]), x + "");
-					serializeIndex(tree, s[1]);
+				for (String colName : otherIndices.keySet()) {
+					bplustree tree = deserializeIndex(otherIndices.get(colName));
+					tree.delete(hashtable.get(colName), x + "");
+					tree.insert(htblColNameValue.get(colName), x + "");
+					serializeIndex(tree, otherIndices.get(colName));
 				}
 				row.updateValues(htblColNameValue);
 				p.setRecords(records);
@@ -437,12 +361,11 @@ public class DBApp {
 				Tuple row = records.get(i);
 				Hashtable<String, Object> hashtable = row.getHtblTuple();
 				// colName,indexName
-				for (String ref : otherIndices) {
-					String[] s = ref.split(",");
-					bplustree tree = deserializeIndex(s[1]);
-					tree.delete(hashtable.get(s[0]), pageNum);
-					tree.insert(htblColNameValue.get(s[0]), pageNum);
-					serializeIndex(tree, s[1]);
+				for (String colName : otherIndices.keySet()) {
+					bplustree tree = deserializeIndex(otherIndices.get(colName));
+					tree.delete(hashtable.get(colName), pageNum);
+					tree.insert(htblColNameValue.get(colName), pageNum);
+					serializeIndex(tree, otherIndices.get(colName));
 				}
 				row.updateValues(htblColNameValue);
 				p.setRecords(records);
@@ -592,7 +515,8 @@ public class DBApp {
 	// return false;
 	// }
 
-	public void checkDataForInsert(String strTableName, Hashtable<String, Object> htblColNameValue)
+	// returns the index for clusteringKey (its name or null)
+	public String checkDataForInsert(String strTableName, Hashtable<String, Object> htblColNameValue)
 			throws DBAppException {
 		BufferedReader br = null;
 		String line = "";
@@ -603,6 +527,7 @@ public class DBApp {
 								// for the columns
 		String clusteringKey = ""; // get key from csv
 		String clusteringKeyIndex = ""; // get index from csv
+
 		try {
 			br = new BufferedReader(new FileReader(METADATA_PATH));
 
@@ -655,6 +580,7 @@ public class DBApp {
 				throw new DBAppException(
 						"CHECK DATA: Repeated clustering key value " + htblColNameValue.get(clusteringKey));
 		}
+		return clusteringKeyIndex;
 	}
 
 	public void checkDataTypesForUpdate(String strTableName, Hashtable<String, Object> htblColNameValue)
@@ -784,53 +710,51 @@ public class DBApp {
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
 		// INSERT
-		String strTableName = "Student";
-		DBApp dbApp = new DBApp();
+		// String strTableName = "Student";
+		// DBApp dbApp = new DBApp();
 
-		Hashtable htblColNameType = new Hashtable();
-		htblColNameType.put("id", "java.lang.Integer");
-		htblColNameType.put("name", "java.lang.String");
-		htblColNameType.put("gpa", "java.lang.double");
-		dbApp.createTable(strTableName, "id", htblColNameType);
+		// Hashtable htblColNameType = new Hashtable();
+		// htblColNameType.put("id", "java.lang.Integer");
+		// htblColNameType.put("name", "java.lang.String");
+		// htblColNameType.put("gpa", "java.lang.double");
+		// dbApp.createTable(strTableName, "id", htblColNameType);
 
-		Hashtable htblColNameValue = new Hashtable();
-		htblColNameValue.put("id", new Integer(1));
-		htblColNameValue.put("name", new String("Ahmed Noor"));
-		htblColNameValue.put("gpa", new Double(0.95));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
-		htblColNameValue.clear();
-		htblColNameValue.put("id", new Integer(2));
-		htblColNameValue.put("name", new String("Ahmed Noor"));
-		htblColNameValue.put("gpa", new Double(0.95));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
-		htblColNameValue.clear();
-		htblColNameValue.put("id", new Integer(3));
-		htblColNameValue.put("name", new String("Dalia Noor"));
-		htblColNameValue.put("gpa", new Double(1.25));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
-		htblColNameValue.clear();
-		htblColNameValue.put("id", new Integer(4));
-		htblColNameValue.put("name", new String("John Noor"));
-		htblColNameValue.put("gpa", new Double(1.5));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
-		htblColNameValue.clear();
+		// Hashtable htblColNameValue = new Hashtable();
+		// htblColNameValue.put("id", new Integer(1));
+		// htblColNameValue.put("name", new String("Ahmed Noor"));
+		// htblColNameValue.put("gpa", new Double(0.95));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// htblColNameValue.clear();
+		// htblColNameValue.put("id", new Integer(2));
+		// htblColNameValue.put("name", new String("Ahmed Noor"));
+		// htblColNameValue.put("gpa", new Double(0.95));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// htblColNameValue.clear();
+		// htblColNameValue.put("id", new Integer(3));
+		// htblColNameValue.put("name", new String("Dalia Noor"));
+		// htblColNameValue.put("gpa", new Double(1.25));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// htblColNameValue.clear();
+		// htblColNameValue.put("id", new Integer(4));
+		// htblColNameValue.put("name", new String("John Noor"));
+		// htblColNameValue.put("gpa", new Double(1.5));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// htblColNameValue.clear();
 
-		dbApp.createIndex(strTableName, "gpa", "gpaIndex");
-		bplustree b = dbApp.deserializeIndex("gpaIndex");
-		b.printTree();
+		// dbApp.createIndex(strTableName, "gpa", "gpaIndex");
+		// bplustree b = dbApp.deserializeIndex("gpaIndex");
+		// b.printTree();
 
 		// UPDATE
 		// String strTableName = "Student";
 		// DBApp dbApp = new DBApp();
 		// Hashtable htblColNameValue = new Hashtable();
 		// // htblColNameValue.put("id", new Integer(1));
-		// htblColNameValue.put("name", new String("Monaaa"));
-		// htblColNameValue.put("gpa", new Double(66666));
+		// htblColNameValue.put("name", new String("aaaa"));
+		// htblColNameValue.put("gpa", new Double(99));
 		// dbApp.updateTable(strTableName, "3", htblColNameValue);
 		// Page p = dbApp.deserializePage("Student_1");
 		// System.out.println(p);
-		// bplustree b = dbApp.deserializeIndex("gpaIndex");
-		// b.printTree();
 
 		// UPDATE 2
 		// String strTableName = "Student";
