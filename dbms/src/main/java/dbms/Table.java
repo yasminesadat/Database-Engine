@@ -39,6 +39,10 @@ public class Table implements Serializable {
         return strTableName;
     }
 
+    public void addNewPage() {
+        strPages.add(strTableName + "_" + nextPageNum++);
+    }
+
     // return the column and its datatype
     public String getStrClusteringKeyColumn() {
         String clusteringKey = "";

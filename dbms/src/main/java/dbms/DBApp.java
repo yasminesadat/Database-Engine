@@ -251,28 +251,41 @@ public class DBApp {
 		// Base case: no pages yet
 		Table t = deserializeTable(strTableName);
 		Vector<String> pages = t.getStrPages();
+		System.out.println("how many pages: " + pages.size());
 		if (pages.size() == 0) {
 			Page p = new Page(strTableName, 1);
 			p.insertBinary(htblColNameValue, clusteringData[0]);
 			serializePage(p);
+			t.addNewPage();
 		}
-
-		if (clusteringData[1].equals("null")) {
+		// Second case: no index on clusteringKey
+		else if (clusteringData[1].equals("null")) {
 			// Find Page
 			int x = binarySearchWithoutIndexForInsertion(strTableName, clusteringData[0],
 					htblColNameValue.get(clusteringData[0]));
+			System.out.println("Page number from binary search:" + x);
 			Page p = deserializePage(strTableName + "_" + x);
 			// page is not full
+			System.out.println("Page Size: " + p.getRecords().size());
 			if (p.getRecords().size() < p.getMaxEntries()) {
 				p.insertBinary(htblColNameValue, clusteringData[0]);
 				serializePage(p);
+			} else {
+
 			}
 
-		} else { // handle Index Exists
+		} else { // Third Case: handle index exists
 
 		}
 
 		// update any indices for the table after successful insertion
+		Hashtable<String, String> v = loadAllIndices(strTableName);
+		for (String i : v.keySet()) {
+			bplustree b = deserializeIndex(i);
+			// to be cont
+		}
+		serializeTable(t);
+		t = null;
 
 	}
 
@@ -801,8 +814,8 @@ public class DBApp {
 
 	}
 
-	public Vector<String> loadAllIndices(String strTableName) throws DBAppException {
-		Vector<String> indices = new Vector<>();
+	public Hashtable<String, String> loadAllIndices(String strTableName) throws DBAppException {
+		Hashtable<String, String> indices = new Hashtable<>();
 		try {
 			String line = "";
 			boolean foundTable = false;
@@ -815,7 +828,7 @@ public class DBApp {
 				if (s[0].equals(strTableName)) {
 					foundTable = true;
 					if (!s[4].equals("null")) {
-						indices.add(s[4]);
+						indices.put(s[1], s[4]);
 					}
 
 				}
@@ -844,29 +857,35 @@ public class DBApp {
 
 		// Hashtable htblColNameValue = new Hashtable();
 		// htblColNameValue.put("id", new Integer(1));
-		// htblColNameValue.put("name", new String("Ahmed Noor"));
+		// htblColNameValue.put("name", new String("noody"));
 		// htblColNameValue.put("gpa", new Double(0.95));
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
 		// htblColNameValue.clear();
 		// htblColNameValue.put("id", new Integer(2));
-		// htblColNameValue.put("name", new String("Ahmed Noor"));
+		// htblColNameValue.put("name", new String("alia"));
 		// htblColNameValue.put("gpa", new Double(0.95));
+		// System.out.println("INSERT 1");
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
 		// htblColNameValue.clear();
-		// htblColNameValue.put("id", new Integer(3));
-		// htblColNameValue.put("name", new String("Dalia Noor"));
+		// System.out.println("INSERT 2");
+		// htblColNameValue.put("id", new Integer(0));
+		// htblColNameValue.put("name", new String("monmon"));
 		// htblColNameValue.put("gpa", new Double(1.25));
+		// System.out.println("INSERT 3");
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
 		// htblColNameValue.clear();
+		// System.out.println("INSERT 4");
 		// htblColNameValue.put("id", new Integer(4));
-		// htblColNameValue.put("name", new String("John Noor"));
+		// htblColNameValue.put("name", new String("malouka"));
 		// htblColNameValue.put("gpa", new Double(1.5));
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
 		// htblColNameValue.clear();
-		// Page p = dbApp.deserializePage("Student_1");
-		// System.out.println(p);
 
-		dbApp.createIndex(strTableName, "gpa", "gpaIndex");
+		// overflow insert
+		Page p = dbApp.deserializePage("Student_1");
+		System.out.println(p);
+
+		// dbApp.createIndex(strTableName, "gpa", "gpaIndex");
 		// bplustree b = dbApp.deserializeIndex("gpaIndex");
 		// b.printTree();
 

@@ -31,6 +31,16 @@ public class Page implements Serializable {
         return s[1];
     }
 
+    public Tuple getLastValue() {
+
+        return Records.get(Records.size() - 1);
+    }
+
+    public Tuple getFirstValue() {
+
+        return Records.get(0);
+    }
+
     public Page(String tableName, int pageNum) {
         try {
             Properties prop = new Properties();
@@ -131,28 +141,6 @@ public class Page implements Serializable {
 
     }
 
-    public Tuple insertAndReturnOther(Tuple t1, Tuple t2, String strClusteringKeyColumn) {
-        // this method compares the 2 tuples, inserts the minimum one and the 'other'
-        // returns it to be inserted in the next page;
-        if (compareTuples(t1, t2, strClusteringKeyColumn) <= 0) {
-            insertBinary(t1.getHtblTuple(), strClusteringKeyColumn);
-            return t2;
-        } else {
-            insertBinary(t2.getHtblTuple(), strClusteringKeyColumn);
-            return t1;
-        }
-    }
-
-    public Tuple getLastValue() {
-
-        return Records.get(Records.size() - 1);
-    }
-
-    public Tuple getFirstValue() {
-
-        return Records.get(0);
-    }
-
     public int binarySearch(String strClusteringKey, Object clusteringKeyValue) {
         Comparator<Tuple> tupleComparator = (Tuple t1, Tuple t2) -> {
             Object key1 = t1.getHtblTuple().get(strClusteringKey);
@@ -180,3 +168,16 @@ public class Page implements Serializable {
     }
 
 }
+
+// public Tuple insertAndReturnOther(Tuple t1, Tuple t2, String
+// strClusteringKeyColumn) {
+// // this method compares the 2 tuples, inserts the minimum one and the 'other'
+// // returns it to be inserted in the next page;
+// if (compareTuples(t1, t2, strClusteringKeyColumn) <= 0) {
+// insertBinary(t1.getHtblTuple(), strClusteringKeyColumn);
+// return t2;
+// } else {
+// insertBinary(t2.getHtblTuple(), strClusteringKeyColumn);
+// return t1;
+// }
+// }
