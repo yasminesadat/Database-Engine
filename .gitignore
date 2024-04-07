@@ -1,0 +1,23 @@
+# Compiled class files
+*.class
+
+# Compiled JAR files
+*.jar
+
+# Compiled WAR files
+*.war
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse files
+.settings/
+
+# NetBeans files
+nbproject/
+
+# Maven
+target/
