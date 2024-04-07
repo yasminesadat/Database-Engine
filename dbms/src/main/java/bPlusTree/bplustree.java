@@ -1240,6 +1240,11 @@ public class bplustree implements Serializable {
 
         }
 
+        // for insertione method
+        public DictionaryPair[] getDictionary() {
+            return dictionary;
+        }
+
         /**
          * Given an index, this method sets the dictionary pair at that index
          * within the dictionary to null.

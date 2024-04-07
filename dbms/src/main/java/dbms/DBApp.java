@@ -241,12 +241,17 @@ public class DBApp {
 			Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
 		// Check table exists
-
 		if (!checkTableExists(strTableName))
 			throw new DBAppException("INSERT INTO TABLE: Table doesn't exist");
 
 		// Check datatypes from csv and if clusteringKey is repeated
 		String clusteringIndexName = checkDataForInsert(strTableName, htblColNameValue);
+		if (clusteringIndexName.equals("null")) {
+			int x=binarySearchWithoutIndex(strTableName, clusteringIndexName, clusteringIndexName)
+
+		} else { // handle Index Exists
+
+		}
 
 	}
 
@@ -678,6 +683,61 @@ public class DBApp {
 			if (clusteringKeyValue instanceof String) {
 				foundPage = ((String) first).compareTo((String) clusteringKeyValue) <= 0
 						&& ((String) last).compareTo((String) clusteringKeyValue) >= 0;
+				goLeft = ((String) first).compareTo((String) clusteringKeyValue) > 0; // first element in page is
+				// greater than what we are
+				// looking for
+			} else if (clusteringKeyValue instanceof Integer) {
+
+				foundPage = ((Integer) first).compareTo((Integer) clusteringKeyValue) <= 0
+						&& ((Integer) last).compareTo((Integer) clusteringKeyValue) >= 0;
+				goLeft = ((Integer) first).compareTo((Integer) clusteringKeyValue) > 0;
+			} else {
+				foundPage = ((Double) first).compareTo((Double) clusteringKeyValue) <= 0
+						&& ((Double) last).compareTo((Double) clusteringKeyValue) >= 0;
+				goLeft = ((Double) first).compareTo((Double) clusteringKeyValue) > 0;
+			}
+
+			if (foundPage)
+				return Integer.parseInt(p.getPageNum());
+			if (goLeft) {
+				j = mid - 1;
+			} else {
+				i = mid + 1;
+			}
+		}
+		return -1;
+
+	}
+
+	// get PageNum for insertion
+	public int binarySearchWithoutIndexForInsertion(String strTableName, String strClusteringKey,
+			Object clusteringKeyValue)
+			throws DBAppException {
+		Table t = deserializeTable(strTableName);
+		boolean foundPage = false; // findPage
+		Page p = null;
+		Vector<String> pages = t.getStrPages();
+		// no pages yet so create firstPage
+		if (pages.size() == 0) {
+			return 1;
+		}
+		/*
+		 * two more cases different from update: key value less than minimum value in
+		 * table or
+		 * greater than maximum in table
+		 */
+		int i = 0;
+		int j = pages.size() - 1;
+		while (j >= i) {
+			boolean goLeft = false; // go to lower half of pages, excluding first half
+			int mid = i + (j - i) / 2;
+			p = deserializePage(pages.get(mid));
+			Object first = p.getFirstValue().getHtblTuple().get(strClusteringKey);
+			Object last = p.getLastValue().getHtblTuple().get(strClusteringKey);
+			if (clusteringKeyValue instanceof String) {
+				foundPage = ((String) first).compareTo((String) clusteringKeyValue) <= 0
+						&& ((String) last).compareTo((String) clusteringKeyValue) >= 0;
+
 				goLeft = ((String) first).compareTo((String) clusteringKeyValue) > 0; // first element in page is
 				// greater than what we are
 				// looking for
