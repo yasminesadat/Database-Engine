@@ -1230,6 +1230,16 @@ public class bplustree implements Serializable {
         LeafNode rightSibling;
         DictionaryPair[] dictionary;
 
+        // TEST
+        public String toString() {
+            String s = "<";
+            for (int i = 0; i < numPairs; i++) {
+                s += "(" + dictionary[i].key + "," + dictionary[i].values + ")" + ", ";
+            }
+            return s.substring(0, s.length() - 2) + ">";
+
+        }
+
         /**
          * Given an index, this method sets the dictionary pair at that index
          * within the dictionary to null.
@@ -1481,6 +1491,32 @@ public class bplustree implements Serializable {
         }
     }
 
+    /**
+     * Search the leaf node which should contain the specified key.
+     * 
+     * @param key the key to search for in the B+ tree
+     * @return the LeafNode that should contain the specified key
+     */
+    private LeafNode findLeafNodeShouldContainKey(Object key) {
+        Node node = this.root;
+        while (node instanceof InternalNode) {
+            InternalNode internalNode = (InternalNode) node;
+            Object[] keys = internalNode.keys;
+            int i;
+
+            // Find the child node to traverse next
+            for (i = 0; i < internalNode.degree - 1; i++) {
+                if (compare(key, keys[i]) < 0) {
+                    break;
+                }
+            }
+
+            node = internalNode.childPointers[i];
+        }
+
+        return (LeafNode) node;
+    }
+
     public static void main(String[] args) {
         // bplustree b = new bplustree(3);
         // b.insert(4, "1");
@@ -1515,21 +1551,17 @@ public class bplustree implements Serializable {
         b3.insert("seif", "7");
         b3.insert("yasmine", null);
         b3.insert("ziad", null);
-        b3.printTree();
         b3.insert("ahmed", "9");
-        b3.printTree();
         b3.delete("ahmed", "9");
         b3.delete("ziad", null);
-        b3.printTree();
         b3.insert("ahmed", null);
-        b3.printTree();
         b3.insert("ahmed2", null);
-        b3.printTree();
         b3.insert("ahmed3", null);
+        b3.insert("ahmed1", null);
         b3.printTree();
-        b3.delete("ahmed1", "null");
-        b3.delete("ahmed2", null);
-        b3.printTree();
+        System.out.println("test");
+        LeafNode n = b3.findLeafNodeShouldContainKey("zz");
+        System.out.println(n);
         // bplustree b4 = new bplustree(3);
         // b4.insert(20, "3");
         // b4.insert(21, "5");
