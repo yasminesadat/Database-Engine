@@ -235,8 +235,8 @@ public class DBApp {
 
 	// following method inserts one row only.
 	// htblColNameValue must include a value for the primary key
+	// https://piazza.com/class/lsbl61kzegk3qo/post/99
 
-	// Imported Yasmine's Page class and added the getStrRecord getter
 	public void insertIntoTable(String strTableName,
 			Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
@@ -245,13 +245,34 @@ public class DBApp {
 			throw new DBAppException("INSERT INTO TABLE: Table doesn't exist");
 
 		// Check datatypes from csv and if clusteringKey is repeated
-		String clusteringIndexName = checkDataForInsert(strTableName, htblColNameValue);
-		if (clusteringIndexName.equals("null")) {
-			int x=binarySearchWithoutIndex(strTableName, clusteringIndexName, clusteringIndexName)
+		// Returns {strClusteringKey, strClusteringColIndexName}
+		String[] clusteringData = checkDataForInsert(strTableName, htblColNameValue);
+
+		// Base case: no pages yet
+		Table t = deserializeTable(strTableName);
+		Vector<String> pages = t.getStrPages();
+		if (pages.size() == 0) {
+			Page p = new Page(strTableName, 1);
+			p.insertBinary(htblColNameValue, clusteringData[0]);
+			serializePage(p);
+		}
+
+		if (clusteringData[1].equals("null")) {
+			// Find Page
+			int x = binarySearchWithoutIndexForInsertion(strTableName, clusteringData[0],
+					htblColNameValue.get(clusteringData[0]));
+			Page p = deserializePage(strTableName + "_" + x);
+			// page is not full
+			if (p.getRecords().size() < p.getMaxEntries()) {
+				p.insertBinary(htblColNameValue, clusteringData[0]);
+				serializePage(p);
+			}
 
 		} else { // handle Index Exists
 
 		}
+
+		// update any indices for the table after successful insertion
 
 	}
 
@@ -521,7 +542,7 @@ public class DBApp {
 	// }
 
 	// returns the index for clusteringKey (its name or null)
-	public String checkDataForInsert(String strTableName, Hashtable<String, Object> htblColNameValue)
+	public String[] checkDataForInsert(String strTableName, Hashtable<String, Object> htblColNameValue)
 			throws DBAppException {
 		BufferedReader br = null;
 		String line = "";
@@ -585,7 +606,7 @@ public class DBApp {
 				throw new DBAppException(
 						"CHECK DATA: Repeated clustering key value " + htblColNameValue.get(clusteringKey));
 		}
-		return clusteringKeyIndex;
+		return new String[] { clusteringKey, clusteringKeyIndex };
 	}
 
 	public void checkDataTypesForUpdate(String strTableName, Hashtable<String, Object> htblColNameValue)
@@ -710,6 +731,7 @@ public class DBApp {
 	}
 
 	// get PageNum for insertion
+	// assumes at least one page is there
 	public int binarySearchWithoutIndexForInsertion(String strTableName, String strClusteringKey,
 			Object clusteringKeyValue)
 			throws DBAppException {
@@ -717,10 +739,6 @@ public class DBApp {
 		boolean foundPage = false; // findPage
 		Page p = null;
 		Vector<String> pages = t.getStrPages();
-		// no pages yet so create firstPage
-		if (pages.size() == 0) {
-			return 1;
-		}
 		/*
 		 * two more cases different from update: key value less than minimum value in
 		 * table or
@@ -741,15 +759,34 @@ public class DBApp {
 				goLeft = ((String) first).compareTo((String) clusteringKeyValue) > 0; // first element in page is
 				// greater than what we are
 				// looking for
+				if (mid == 0) {
+					foundPage = foundPage || ((String) first).compareTo((String) clusteringKeyValue) > 0;
+				}
+				if (mid == pages.size() - 1) {
+					foundPage = foundPage || ((String) last).compareTo((String) clusteringKeyValue) < 0;
+				}
 			} else if (clusteringKeyValue instanceof Integer) {
 
 				foundPage = ((Integer) first).compareTo((Integer) clusteringKeyValue) <= 0
 						&& ((Integer) last).compareTo((Integer) clusteringKeyValue) >= 0;
 				goLeft = ((Integer) first).compareTo((Integer) clusteringKeyValue) > 0;
+				if (mid == 0) {
+					foundPage = foundPage || ((Integer) first).compareTo((Integer) clusteringKeyValue) > 0;
+				}
+				if (mid == pages.size() - 1) {
+					foundPage = foundPage || ((Integer) last).compareTo((Integer) clusteringKeyValue) < 0;
+				}
+
 			} else {
 				foundPage = ((Double) first).compareTo((Double) clusteringKeyValue) <= 0
 						&& ((Double) last).compareTo((Double) clusteringKeyValue) >= 0;
 				goLeft = ((Double) first).compareTo((Double) clusteringKeyValue) > 0;
+				if (mid == 0) {
+					foundPage = foundPage || ((Double) first).compareTo((Double) clusteringKeyValue) > 0;
+				}
+				if (mid == pages.size() - 1) {
+					foundPage = foundPage || ((Double) last).compareTo((Double) clusteringKeyValue) < 0;
+				}
 			}
 
 			if (foundPage)
@@ -764,6 +801,32 @@ public class DBApp {
 
 	}
 
+	public Vector<String> loadAllIndices(String strTableName) throws DBAppException {
+		Vector<String> indices = new Vector<>();
+		try {
+			String line = "";
+			boolean foundTable = false;
+			BufferedReader br = new BufferedReader(new FileReader(METADATA_PATH));
+			while ((line = br.readLine()) != null) {
+				String[] s = line.split(", ");
+				if (foundTable && !s[0].equals(strTableName)) {
+					break;
+				}
+				if (s[0].equals(strTableName)) {
+					foundTable = true;
+					if (!s[4].equals("null")) {
+						indices.add(s[4]);
+					}
+
+				}
+			}
+			br.close();
+		} catch (IOException e) {
+			throw new DBAppException(e.getMessage());
+		}
+		return indices;
+	}
+
 	/////////////////////////////////////////// END
 	/////////////////////////////////////////// //////////////////////////////////////////////////////////
 
@@ -773,37 +836,37 @@ public class DBApp {
 		String strTableName = "Student";
 		DBApp dbApp = new DBApp();
 
-		Hashtable htblColNameType = new Hashtable();
-		htblColNameType.put("id", "java.lang.Integer");
-		htblColNameType.put("name", "java.lang.String");
-		htblColNameType.put("gpa", "java.lang.double");
-		dbApp.createTable(strTableName, "id", htblColNameType);
+		// Hashtable htblColNameType = new Hashtable();
+		// htblColNameType.put("id", "java.lang.Integer");
+		// htblColNameType.put("name", "java.lang.String");
+		// htblColNameType.put("gpa", "java.lang.double");
+		// dbApp.createTable(strTableName, "id", htblColNameType);
 
-		Hashtable htblColNameValue = new Hashtable();
-		htblColNameValue.put("id", new Integer(1));
-		htblColNameValue.put("name", new String("Ahmed Noor"));
-		htblColNameValue.put("gpa", new Double(0.95));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
-		htblColNameValue.clear();
-		htblColNameValue.put("id", new Integer(2));
-		htblColNameValue.put("name", new String("Ahmed Noor"));
-		htblColNameValue.put("gpa", new Double(0.95));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
-		htblColNameValue.clear();
-		htblColNameValue.put("id", new Integer(3));
-		htblColNameValue.put("name", new String("Dalia Noor"));
-		htblColNameValue.put("gpa", new Double(1.25));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
-		htblColNameValue.clear();
-		htblColNameValue.put("id", new Integer(4));
-		htblColNameValue.put("name", new String("John Noor"));
-		htblColNameValue.put("gpa", new Double(1.5));
-		dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// Hashtable htblColNameValue = new Hashtable();
+		// htblColNameValue.put("id", new Integer(1));
+		// htblColNameValue.put("name", new String("Ahmed Noor"));
+		// htblColNameValue.put("gpa", new Double(0.95));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// htblColNameValue.clear();
+		// htblColNameValue.put("id", new Integer(2));
+		// htblColNameValue.put("name", new String("Ahmed Noor"));
+		// htblColNameValue.put("gpa", new Double(0.95));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// htblColNameValue.clear();
+		// htblColNameValue.put("id", new Integer(3));
+		// htblColNameValue.put("name", new String("Dalia Noor"));
+		// htblColNameValue.put("gpa", new Double(1.25));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// htblColNameValue.clear();
+		// htblColNameValue.put("id", new Integer(4));
+		// htblColNameValue.put("name", new String("John Noor"));
+		// htblColNameValue.put("gpa", new Double(1.5));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
 		// htblColNameValue.clear();
 		// Page p = dbApp.deserializePage("Student_1");
 		// System.out.println(p);
 
-		// dbApp.createIndex(strTableName, "gpa", "gpaIndex");
+		dbApp.createIndex(strTableName, "gpa", "gpaIndex");
 		// bplustree b = dbApp.deserializeIndex("gpaIndex");
 		// b.printTree();
 
