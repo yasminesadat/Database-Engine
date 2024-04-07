@@ -1167,23 +1167,23 @@ public class bplustree implements Serializable {
         }
 
         // remove leaf node->parent key is removed
-        private void removePointerSpecial(Node pointer) {
-            for (int i = 0; i < childPointers.length; i++) {
-                if (childPointers[i] == pointer) {
-                    this.childPointers[i] = null;
-                    // TEST: handle n n+1 violation
-                    if (i == 0) {
-                        this.removeKey(0);
-                    } else {
-                        this.removeKey(i - 1);
-                    }
-                }
-            }
-            this.degree--;
-            if (this.isDeficient()) {
-                handleDeficiency(this);
-            }
-        }
+        // private void removePointerSpecial(Node pointer) {
+        // for (int i = 0; i < childPointers.length; i++) {
+        // if (childPointers[i] == pointer) {
+        // this.childPointers[i] = null;
+        // // TEST: handle n n+1 violation
+        // if (i == 0) {
+        // this.removeKey(0);
+        // } else {
+        // this.removeKey(i - 1);
+        // }
+        // }
+        // }
+        // this.degree--;
+        // if (this.isDeficient()) {
+        // handleDeficiency(this);
+        // }
+        // }
 
         /**
          * Constructor
