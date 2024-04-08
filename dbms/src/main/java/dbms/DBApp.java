@@ -262,6 +262,7 @@ public class DBApp {
 			// in case user creates indices before any tuples have been inserted
 			Hashtable<String, String> indices = loadAllIndices(strTableName);
 			for (String i : indices.keySet()) {
+				System.out.println("add in index for first insert only");
 				bplustree b = deserializeIndex(i);
 				b.insert(htblColNameValue.get(indices.get(i)), "1");
 				serializeIndex(b, i);
@@ -283,11 +284,15 @@ public class DBApp {
 				DictionaryPair[] dp = b.findLeafNodeShouldContainKey(insert);
 				// binary search on leaf node keys to find correct "in between" values
 				int i = 0;
-				int j = dp.length - 1;
+				int j = 0;
+				while (dp[j] != null)
+					j++;
+				j--;
+				int lastElement = j;
 				// note: can't have duplicates for values in dp
 				while (j >= i) {
 					int mid = i + (j - i) / 2;
-					if (dp[mid].compare(insert) < 0 && mid != dp.length - 1 && dp[mid + 1].compare(insert) > 0) {
+					if (dp[mid].compare(insert) < 0 && mid != lastElement && dp[mid + 1].compare(insert) > 0) {
 						targetPage = dp[mid + 1].getValues().get(0);
 						break;
 					}
@@ -295,7 +300,7 @@ public class DBApp {
 						targetPage = dp[mid].getValues().get(0);
 						break;
 					}
-					if (mid == dp.length - 1 && dp[mid].compare(insert) < 0) {
+					if (mid == lastElement && dp[mid].compare(insert) < 0) {
 						targetPage = dp[mid].getValues().get(0);
 						break;
 					}
@@ -305,6 +310,7 @@ public class DBApp {
 						i = mid + 1;
 					}
 				}
+				System.out.println("Index targetPage: " + targetPage);
 			}
 
 			// page logic here
@@ -314,6 +320,7 @@ public class DBApp {
 			// Prepare a list to track displaced elements and their page movements
 			Hashtable<Tuple, String> displacedElements = new Hashtable<>();
 			String displacedTuplePageNum = p.getPageNum();
+			String newTuplePage = displacedTuplePageNum;
 			serializePage(p);
 
 			// Propagate the displaced tuple to the next pages
@@ -348,13 +355,25 @@ public class DBApp {
 				// tuples
 
 			}
-			// update any indices for the table after successful insertion
-			// Hashtable<String, String> v = loadAllIndices(strTableName);for(
-			// String i:v.keySet())
-			// {
-			// bplustree b = deserializeIndex(i);
-			// // to be cont
-			// }
+			// update any indices <indexName, colName> for the table after successful
+			// insertion
+			System.out.println("displaced tuples:" + displacedElements.size());
+			Hashtable<String, String> v = loadAllIndices(strTableName);
+			for (String i : v.keySet()) {
+				String colName = v.get(i);
+				bplustree b = deserializeIndex(i);
+				// new tuple
+				b.insert(htblColNameValue.get(colName), newTuplePage);
+				for (Tuple row : displacedElements.keySet()) {
+					// change page numbers for displaced tuples
+					System.out.println("displaced tuple: " + row);
+					Hashtable<String, Object> h = row.getHtblTuple();
+					b.delete(h.get(colName), displacedElements.get(row));
+					int newPage = Integer.parseInt(displacedElements.get(row)) + 1;
+					b.insert(h.get(colName), newPage + "");
+				}
+				serializeIndex(b, i);
+			}
 
 		}
 
@@ -362,15 +381,6 @@ public class DBApp {
 		t = null;
 
 	}
-
-	// serializeTable(t);
-	// t = null;
-
-	// }
-	// System.out.println("Page Size: " + p.getRecords().size());
-	// if (p.getRecords().size() < p.getMaxEntries()) {
-	// p.insertBinary(htblColNameValue, clusteringData[0]);
-	// serializePage(p);
 
 	// following method updates one row only
 	// htblColNameValue holds the key and new value
@@ -438,7 +448,7 @@ public class DBApp {
 				break;
 		}
 		if (index.equals("null")) {
-			// pageNum
+			// page
 			Page p = binarySearchWithoutIndex(strTableName, clusteringKey, clusteringKeyValue);
 			if (p.equals(null)) {
 				throw new DBAppException("UPDATE TABLE: Record not found in table");
@@ -930,105 +940,48 @@ public class DBApp {
 
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
-		// INSERT
+		// SET UP
+		// insert 100, 0, 500, 300, 250
 		String strTableName = "Student";
 		DBApp dbApp = new DBApp();
 
-		// Hashtable htblColNameType = new Hashtable();
-		// htblColNameType.put("id", "java.lang.Integer");
-		// htblColNameType.put("name", "java.lang.String");
-		// htblColNameType.put("gpa", "java.lang.double");
-		// dbApp.createTable(strTableName, "id", htblColNameType);
-
-		// Hashtable htblColNameValue = new Hashtable();
-		// htblColNameValue.put("id", new Integer(4));
-		// htblColNameValue.put("name", new String("noody"));
-		// htblColNameValue.put("gpa", new Double(0.95));
-		// System.out.println("INSERT 1");
-		// dbApp.insertIntoTable(strTableName, htblColNameValue);
-		Page p = dbApp.deserializePage("Student_2");
-		System.out.println(p);
-		// Hashtable h = new Hashtable<>();
-		// h.put("name", new String("TESTTT"));
-		// dbApp.updateTable("Student", "4", h);
-
-		// System.out.println("INSERT 2");
-		// htblColNameValue.clear();
-		// htblColNameValue.put("id", new Integer(2));
-		// htblColNameValue.put("name", new String("alia"));
-		// htblColNameValue.put("gpa", new Double(0.95));
-		// dbApp.insertIntoTable(strTableName, htblColNameValue);
-		// p = dbApp.deserializePage("Student_1");
-		// System.out.println(p);
-
-		// System.out.println("INSERT 3");
-		// htblColNameValue.clear();
-		// htblColNameValue.put("id", new Integer(0));
-		// htblColNameValue.put("name", new String("monmon"));
-		// htblColNameValue.put("gpa", new Double(1.25));
-		// dbApp.insertIntoTable(strTableName, htblColNameValue);
-		// htblColNameValue.clear();
-
-		// System.out.println("INSERT 4");
-		// htblColNameValue.put("id", new Integer(4));
-		// htblColNameValue.put("name", new String("malouka"));
-		// htblColNameValue.put("gpa", new Double(1.5));
-		// dbApp.insertIntoTable(strTableName, htblColNameValue);
-		// htblColNameValue.clear();
-		// p = dbApp.deserializePage("Student_1");
-		// System.out.println(p);
-
-		// overflow insert
-		// Hashtable htblColNameValue = new Hashtable();
-		// htblColNameValue.put("id", new Integer(3));
-		// htblColNameValue.put("name", new String("noody"));
-		// htblColNameValue.put("gpa", new Double(0.95));
-		// dbApp.insertIntoTable(strTableName, htblColNameValue);
-		// Page p = dbApp.deserializePage("Student_2");
-		// System.out.println(p);
-
-		// dbApp.createIndex(strTableName, "gpa", "gpaIndex");
-		// bplustree b = dbApp.deserializeIndex("gpaIndex");
-		// b.printTree();
-
-		// UPDATE
-		// String strTableName = "Student";
-		// DBApp dbApp = new DBApp();
-		// Hashtable htblColNameValue = new Hashtable();
-		// // htblColNameValue.put("id", new Integer(1));
-		// htblColNameValue.put("name", new String("aaaa"));
-		// htblColNameValue.put("gpa", new Double(99));
-		// dbApp.updateTable(strTableName, "3", htblColNameValue);
-		// Page p = dbApp.deserializePage("Student_1");
-		// System.out.println(p);
-
-		// UPDATE 2
-		// String strTableName = "Student";
-		// DBApp dbApp = new DBApp();
-		// Hashtable htblColNameValue = new Hashtable();
-		// dbApp.createIndex(strTableName, "name", "name_Index");
-		// bplustree b = dbApp.deserializeIndex("name_Index");
-		// // htblColNameValue.put("id", new Integer(1));
-		// htblColNameValue.put("name", new String("CHANGE"));
-		// htblColNameValue.put("gpa", new Double(100.0));
-		// dbApp.updateTable(strTableName, "4", htblColNameValue);
-		// Page p = dbApp.deserializePage("Student_1");
-		// System.out.println(p);
-		// b = dbApp.deserializeIndex("name_Index");
-		// b.printTree();
-		// bplustree b1 = dbApp.deserializeIndex("gpaIndex");
-		// b1.printTree();
-
-		// UPDATE 3: test search with index
-		// String strTableName = "Student";
-		// DBApp dbApp = new DBApp();
-		// // dbApp.createIndex(strTableName, "id", "IDindex");
-		// Hashtable htblColNameValue = new Hashtable();
-		// // htblColNameValue.put("id", new Integer(1));
-		// htblColNameValue.put("name", new String("BALABIZO3"));
-		// dbApp.updateTable(strTableName, "1", htblColNameValue);
-		// Page p = dbApp.deserializePage("Student_1");
-		// System.out.println(p);
+		Hashtable htblColNameType = new Hashtable();
+		htblColNameType.put("id", "java.lang.Integer");
+		htblColNameType.put("name", "java.lang.String");
+		htblColNameType.put("gpa", "java.lang.double");
+		dbApp.createTable(strTableName, "id", htblColNameType);
+		dbApp.createIndex(strTableName, "gpa", "gpaIndex");
+		dbApp.createIndex(strTableName, "id", "idIndex");
+		Hashtable htblColNameValue = new Hashtable();
+		htblColNameValue.put("id", new Integer(100));
+		htblColNameValue.put("name", new String("Ahmed Noor"));
+		htblColNameValue.put("gpa", new Double(0.95));
+		System.out.println("first insert");
+		dbApp.insertIntoTable(strTableName, htblColNameValue);
+		htblColNameValue.clear();
+		htblColNameValue.put("id", new Integer(0));
+		htblColNameValue.put("name", new String("Karim Noor"));
+		htblColNameValue.put("gpa", new Double(0.95));
+		System.out.println("second insert");
+		dbApp.insertIntoTable(strTableName, htblColNameValue);
+		htblColNameValue.clear();
+		htblColNameValue.put("id", new Integer(500));
+		htblColNameValue.put("name", new String("Dalia Noor"));
+		htblColNameValue.put("gpa", new Double(1.25));
+		System.out.println("third insert");
+		dbApp.insertIntoTable(strTableName, htblColNameValue);
+		htblColNameValue.clear();
+		htblColNameValue.put("id", new Integer(300));
+		htblColNameValue.put("name", new String("John Noor"));
+		htblColNameValue.put("gpa", new Double(1.5));
+		System.out.println("fourth insert");
+		dbApp.insertIntoTable(strTableName, htblColNameValue);
+		htblColNameValue.clear();
+		htblColNameValue.put("id", new Integer(250));
+		htblColNameValue.put("name", new String("Zaky Noor"));
+		htblColNameValue.put("gpa", new Double(0.88));
+		System.out.println("fifth insert");
+		dbApp.insertIntoTable(strTableName, htblColNameValue);
 
 	}
 }

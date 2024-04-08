@@ -1535,7 +1535,8 @@ public class bplustree implements Serializable {
 
             node = internalNode.childPointers[i];
         }
-
+        if (root == null)
+            return firstLeaf.dictionary;
         return ((LeafNode) node).dictionary;
 
     }
