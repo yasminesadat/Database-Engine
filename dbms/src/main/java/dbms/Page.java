@@ -142,23 +142,32 @@ public class Page implements Serializable {
             insertBinary(value, strClusteringKeyColumn);
             return null; // No tuple was displaced
         } else {
-            // If the page is full, displace the last tuple
-            Tuple displacedTuple = Records.lastElement();
+            // If the page is full, displace the largest tuple
+            Tuple lastTuple = Records.lastElement();
+            Tuple displacedTuple = null;
+            if (compareTuples(lastTuple, insertTuple, strClusteringKeyColumn) > 0) {
+                // lastTuple is to be displaced
+                displacedTuple = lastTuple;
+                // Find the correct position for the new tuple and insert it
+                int index = searchBinary(value, strClusteringKeyColumn);
+                if (index < 0) {
+                    index = -(index + 1); // Convert the insertion point
+                }
+                Records.add(index, insertTuple); // Insert the new tuple at the correct position
 
-            // Find the correct position for the new tuple and insert it
-            int index = searchBinary(value, strClusteringKeyColumn);
-            if (index < 0) {
-                index = -(index + 1); // Convert the insertion point
-            }
-            Records.add(index, insertTuple); // Insert the new tuple at the correct position
+                // Since the page was full, we remove the last tuple (now an extra element)
+                if (index <= Records.size() - 2) { // Check if the new tuple was not added to the end
+                    Records.remove(Records.size() - 1); // Remove the last tuple
+                } else {
+                    // If the new tuple was added to the end, remove the second last (now last)
+                    // tuple
+                    Records.remove(Records.size() - 2);
+                }
+            } else { // new tuple to be shifted - edge case where insertion is beyond the max element
+                     // and there page is full
 
-            // Since the page was full, we remove the last tuple (now an extra element)
-            if (index <= Records.size() - 2) { // Check if the new tuple was not added to the end
-                Records.remove(Records.size() - 1); // Remove the last tuple
-            } else {
-                // If the new tuple was added to the end, remove the second last (now last)
-                // tuple
-                Records.remove(Records.size() - 2);
+                displacedTuple = insertTuple;
+
             }
 
             // Return the displaced tuple

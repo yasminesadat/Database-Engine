@@ -3,7 +3,7 @@ package myTests;
 import dbms.*;
 import bPlusTree.*;
 
-public class outputChecker {
+public class outputChecker2 {
     public static void main(String[] args) throws DBAppException {
         DBApp dbApp = new DBApp();
         System.out.println("first page");
