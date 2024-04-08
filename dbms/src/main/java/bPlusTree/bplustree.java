@@ -1367,6 +1367,10 @@ public class bplustree implements Serializable {
             this.insert(dp);
         }
 
+        public int getNumPairs() {
+            return numPairs;
+        }
+
         /**
          * Constructor
          * 
@@ -1519,7 +1523,7 @@ public class bplustree implements Serializable {
         }
     }
 
-    public DictionaryPair[] findLeafNodeShouldContainKey(Object key) {
+    public LeafNode findLeafNodeShouldContainKey(Object key) {
         Node node = this.root;
         while (node instanceof InternalNode) {
             InternalNode internalNode = (InternalNode) node;
@@ -1536,8 +1540,8 @@ public class bplustree implements Serializable {
             node = internalNode.childPointers[i];
         }
         if (root == null)
-            return firstLeaf.dictionary;
-        return ((LeafNode) node).dictionary;
+            return firstLeaf;
+        return ((LeafNode) node);
 
     }
 

@@ -3,6 +3,7 @@ package dbms;
 /** * @author Wael Abouelsaadat */
 import bPlusTree.bplustree;
 import bPlusTree.bplustree.DictionaryPair;
+import bPlusTree.bplustree.LeafNode;
 
 import java.util.Iterator;
 import java.util.Properties;
@@ -281,19 +282,17 @@ public class DBApp {
 			} else { // Second case: index exists
 				bplustree b = deserializeIndex(clusteringData[1]);
 				Object insert = htblColNameValue.get(clusteringData[0]);
-				DictionaryPair[] dp = b.findLeafNodeShouldContainKey(insert);
+				LeafNode n = b.findLeafNodeShouldContainKey(insert);
+				DictionaryPair[] dp = n.getDictionary();
 				// binary search on leaf node keys to find correct "in between" values
 				int i = 0;
-				int j = 0;
-				while (dp[j] != null)
-					j++;
-				j--;
+				int j = n.getNumPairs() - 1;
 				int lastElement = j;
 				// note: can't have duplicates for values in dp
 				while (j >= i) {
 					int mid = i + (j - i) / 2;
 					if (dp[mid].compare(insert) < 0 && mid != lastElement && dp[mid + 1].compare(insert) > 0) {
-						targetPage = dp[mid + 1].getValues().get(0);
+						targetPage = dp[mid].getValues().get(0);
 						break;
 					}
 					if (mid == 0 && dp[mid].compare(insert) > 0) {
