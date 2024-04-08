@@ -53,6 +53,8 @@ public class Page implements Serializable {
     }
 
     public String toString() {
+        if (numOfEntries == 0)
+            return "Empty Page";
         String s = "";
         for (int i = 0; i < numOfEntries; i++) {
             s += Records.get(i).toString() + ", ";
@@ -115,7 +117,8 @@ public class Page implements Serializable {
      */
     // insert when there is space
     public void insertBinary(Hashtable<String, Object> value, String strClusteringKeyColumn) {
-        Tuple insertTuple = new Tuple(getPageName(), value);
+        String[] s = pageName.split("_");
+        Tuple insertTuple = new Tuple(s[0], value);
         // creare a Comparator to binary search on the tuples and compare based on the
         // clustering key
         int index = searchBinary(value, strClusteringKeyColumn);
@@ -131,7 +134,8 @@ public class Page implements Serializable {
 
     public Tuple insertAndDisplaceLast(Hashtable<String, Object> value, String strClusteringKeyColumn) {
         // Create a tuple from the insert hashtable
-        Tuple insertTuple = new Tuple(getPageNum(), value);
+        String[] s = pageName.split("_");
+        Tuple insertTuple = new Tuple(s[0], value);
 
         // If the page is not full, simply insert the tuple
         if (numOfEntries < maxEntries) {

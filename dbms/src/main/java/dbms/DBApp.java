@@ -363,6 +363,15 @@ public class DBApp {
 
 	}
 
+	// serializeTable(t);
+	// t = null;
+
+	// }
+	// System.out.println("Page Size: " + p.getRecords().size());
+	// if (p.getRecords().size() < p.getMaxEntries()) {
+	// p.insertBinary(htblColNameValue, clusteringData[0]);
+	// serializePage(p);
+
 	// following method updates one row only
 	// htblColNameValue holds the key and new value
 	// htblColNameValue will not include clustering key as column name
@@ -430,11 +439,11 @@ public class DBApp {
 		}
 		if (index.equals("null")) {
 			// pageNum
-			int x = binarySearchWithoutIndex(strTableName, clusteringKey, clusteringKeyValue);
-			if (x <= 0) {
+			Page p = binarySearchWithoutIndex(strTableName, clusteringKey, clusteringKeyValue);
+			if (p.equals(null)) {
 				throw new DBAppException("UPDATE TABLE: Record not found in table");
 			} else {
-				Page p = deserializePage(strTableName + "_" + x);
+
 				Vector<Tuple> records = p.getRecords();
 				int i = p.binarySearch(clusteringKey, clusteringKeyValue); // rowNumber
 				Tuple row = records.get(i);
@@ -442,8 +451,8 @@ public class DBApp {
 				// colName,indexName
 				for (String colName : otherIndices.keySet()) {
 					bplustree tree = deserializeIndex(otherIndices.get(colName));
-					tree.delete(hashtable.get(colName), x + "");
-					tree.insert(htblColNameValue.get(colName), x + "");
+					tree.delete(hashtable.get(colName), p.getPageNum());
+					tree.insert(htblColNameValue.get(colName), p.getPageNum());
 					serializeIndex(tree, otherIndices.get(colName));
 				}
 				row.updateValues(htblColNameValue);
@@ -689,7 +698,8 @@ public class DBApp {
 						"CHECK DATA: Repeated clustering key value " + htblColNameValue.get(clusteringKey));
 			}
 		} else {
-			if (binarySearchWithoutIndex(strTableName, clusteringKey, htblColNameValue.get(clusteringKey)) >= 0)
+			Page p = binarySearchWithoutIndex(strTableName, clusteringKey, htblColNameValue.get(clusteringKey));
+			if (p != null && p.binarySearch(clusteringKey, htblColNameValue.get(clusteringKey)) >= 0)
 				throw new DBAppException(
 						"CHECK DATA: Repeated clustering key value " + htblColNameValue.get(clusteringKey));
 		}
@@ -773,8 +783,8 @@ public class DBApp {
 	// } else
 	// return p.binarySearch(strClusteringKey, clusteringKeyValue);
 	// }
-	// get PageNum
-	public int binarySearchWithoutIndex(String strTableName, String strClusteringKey, Object clusteringKeyValue)
+	// get Page
+	public Page binarySearchWithoutIndex(String strTableName, String strClusteringKey, Object clusteringKeyValue)
 			throws DBAppException {
 		Table t = deserializeTable(strTableName);
 		boolean foundPage = false; // findPage
@@ -806,14 +816,14 @@ public class DBApp {
 			}
 
 			if (foundPage)
-				return Integer.parseInt(p.getPageNum());
+				return p;
 			if (goLeft) {
 				j = mid - 1;
 			} else {
 				i = mid + 1;
 			}
 		}
-		return -1;
+		return null;
 
 	}
 
@@ -931,34 +941,51 @@ public class DBApp {
 		// dbApp.createTable(strTableName, "id", htblColNameType);
 
 		// Hashtable htblColNameValue = new Hashtable();
-		// htblColNameValue.put("id", new Integer(1));
+		// htblColNameValue.put("id", new Integer(4));
 		// htblColNameValue.put("name", new String("noody"));
 		// htblColNameValue.put("gpa", new Double(0.95));
+		// System.out.println("INSERT 1");
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		Page p = dbApp.deserializePage("Student_2");
+		System.out.println(p);
+		// Hashtable h = new Hashtable<>();
+		// h.put("name", new String("TESTTT"));
+		// dbApp.updateTable("Student", "4", h);
+
+		// System.out.println("INSERT 2");
 		// htblColNameValue.clear();
 		// htblColNameValue.put("id", new Integer(2));
 		// htblColNameValue.put("name", new String("alia"));
 		// htblColNameValue.put("gpa", new Double(0.95));
-		// System.out.println("INSERT 1");
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// p = dbApp.deserializePage("Student_1");
+		// System.out.println(p);
+
+		// System.out.println("INSERT 3");
 		// htblColNameValue.clear();
-		// System.out.println("INSERT 2");
 		// htblColNameValue.put("id", new Integer(0));
 		// htblColNameValue.put("name", new String("monmon"));
 		// htblColNameValue.put("gpa", new Double(1.25));
-		// System.out.println("INSERT 3");
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
 		// htblColNameValue.clear();
+
 		// System.out.println("INSERT 4");
 		// htblColNameValue.put("id", new Integer(4));
 		// htblColNameValue.put("name", new String("malouka"));
 		// htblColNameValue.put("gpa", new Double(1.5));
 		// dbApp.insertIntoTable(strTableName, htblColNameValue);
 		// htblColNameValue.clear();
+		// p = dbApp.deserializePage("Student_1");
+		// System.out.println(p);
 
 		// overflow insert
-		Page p = dbApp.deserializePage("Student_1");
-		System.out.println(p);
+		// Hashtable htblColNameValue = new Hashtable();
+		// htblColNameValue.put("id", new Integer(3));
+		// htblColNameValue.put("name", new String("noody"));
+		// htblColNameValue.put("gpa", new Double(0.95));
+		// dbApp.insertIntoTable(strTableName, htblColNameValue);
+		// Page p = dbApp.deserializePage("Student_2");
+		// System.out.println(p);
 
 		// dbApp.createIndex(strTableName, "gpa", "gpaIndex");
 		// bplustree b = dbApp.deserializeIndex("gpaIndex");
