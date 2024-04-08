@@ -2,9 +2,11 @@ package myTests;
 
 import dbms.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Hashtable;
-
-import bPlusTree.*;
 
 public class Tester1 {
     @SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
@@ -13,6 +15,14 @@ public class Tester1 {
         // SET UP: Config to 4
         // PURPOSE: Edge case of inserted tuple being shifted
         // insert 100, 0, 300, 250,500,600,700,800,900,1000
+
+        String filePath = "dbms/src/main/resources/metadata.csv";
+        Path path = Paths.get(filePath);
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+        }
+
         String strTableName = "Student";
         DBApp dbApp = new DBApp();
 

@@ -485,6 +485,7 @@ public class DBApp {
 				throw new DBAppException("UPDATE TABLE: Record not found in table");
 			} else {
 				// already know it'll be one value
+				System.out.println("UPDATE USING INDEX");
 				String pageNum = v.get(0);
 				Page p = deserializePage(strTableName + "_" + pageNum);
 				int i = p.binarySearch(clusteringKey, clusteringKeyValue); // rowNumber

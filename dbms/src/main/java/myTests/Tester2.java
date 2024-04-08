@@ -2,16 +2,26 @@ package myTests;
 
 import dbms.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Hashtable;
-
-import bPlusTree.*;
 
 public class Tester2 {
     @SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
     public static void main(String[] args) throws DBAppException {
         // SET UP: Config to 4
         // PURPOSE: Shifting old tuple to new page to insert new one
+        // then update tuple 250
         // insert 100, 0, 500, 300, 250
+
+        String filePath = "dbms/src/main/resources/metadata.csv";
+        Path path = Paths.get(filePath);
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+        }
         String strTableName = "Student";
         DBApp dbApp = new DBApp();
 
@@ -52,5 +62,9 @@ public class Tester2 {
         htblColNameValue.put("gpa", new Double(0.88));
         System.out.println("fifth insert");
         dbApp.insertIntoTable(strTableName, htblColNameValue);
+        htblColNameValue.clear();
+        htblColNameValue.put("name", new String("UPDATED"));
+        htblColNameValue.put("gpa", new Double(100000));
+        dbApp.updateTable(strTableName, "250", htblColNameValue);
     }
 }
