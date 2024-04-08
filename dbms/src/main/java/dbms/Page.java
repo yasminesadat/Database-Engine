@@ -70,6 +70,11 @@ public class Page implements Serializable {
         this.Records = Records;
     }
 
+    public void remove(int i) {
+        Records.remove(i);
+        numOfEntries--;
+    }
+
     // Compare the tuples based on the clustering key
     public static int compareTuples(Tuple t1, Tuple t2, String strClusteringKeyColumn) {
         Object t1clustervalue = t1.getHtblTuple().get(strClusteringKeyColumn);
