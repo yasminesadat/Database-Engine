@@ -156,15 +156,10 @@ public class Page implements Serializable {
                 Records.add(index, insertTuple); // Insert the new tuple at the correct position
 
                 // Since the page was full, we remove the last tuple (now an extra element)
-                if (index <= Records.size() - 2) { // Check if the new tuple was not added to the end
-                    Records.remove(Records.size() - 1); // Remove the last tuple
-                } else {
-                    // If the new tuple was added to the end, remove the second last (now last)
-                    // tuple
-                    Records.remove(Records.size() - 2);
-                }
-            } else { // new tuple to be shifted - edge case where insertion is beyond the max element
-                     // and there page is full
+                Records.remove(Records.size() - 1); // Remove the last tuple
+
+            } else { // New tuple to be shifted - edge case where insertion is beyond the max element
+                     // and the page is full
 
                 displacedTuple = insertTuple;
 
