@@ -526,9 +526,12 @@ public class DBApp {
 	}
 
 	// https://piazza.com/class/lsbl61kzegk3qo/post/161
+	// _strOperator can be >, >=, <, <=, != or = (6 operators)
+	// AND, OR, or XOR
+	// Number of operators = number of terms - 1
 	public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
-
+		checkDataTypesForSelect(arrSQLTerms);
 		return null;
 	}
 
@@ -767,6 +770,50 @@ public class DBApp {
 
 	}
 
+	public void checkDataTypesForSelect(SQLTerm[] arrSQLTerms) throws DBAppException {
+		if (arrSQLTerms.length == 0) {
+			throw new DBAppException("CHECK DATA: No SQL terms have been provided.");
+		}
+		String strTableName = arrSQLTerms[0]._strTableName;
+		BufferedReader br = null;
+		String line = "";
+		boolean foundTable = false; // use as not to continue looping through all of the file if the needed
+									// datatypes
+									// have been all checked
+		Hashtable<String, String> columnData = new Hashtable<>(); // store key:column name, value: data type
+		try {
+			br = new BufferedReader(new FileReader(METADATA_PATH));
+
+			while ((line = br.readLine()) != null) {
+				String[] s = line.split(", ");
+
+				if (foundTable && !strTableName.equals(s[0])) {
+					break;
+				}
+
+				// check type
+				if (strTableName.equals(s[0])) {
+					foundTable = true; // stopping mechanism
+					columnData.put(s[1], s[2]);
+
+				}
+
+			}
+			br.close();
+		} catch (IOException e) {
+			throw new DBAppException(e.getMessage());
+		}
+		for (SQLTerm term : arrSQLTerms) {
+			if (!columnData.containsKey(term._strColumnName)) {
+				throw new DBAppException("CHECK DATA: Column " + term._strColumnName + " doesn't exist in the table");
+			}
+			if (!term._objValue.getClass().getTypeName().toLowerCase().equals(columnData.get(term._strColumnName)))
+				throw new DBAppException("CHECK DATA: You have entered an in compatible "
+						+ term._objValue.getClass().getTypeName().toLowerCase() + " for " + term._strColumnName);
+		}
+
+	}
+
 	// public int binarySearchWithoutIndex(String strTableName, String
 	// strClusteringKey, Object clusteringKeyValue)
 	// throws DBAppException {
@@ -943,6 +990,23 @@ public class DBApp {
 
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
+		DBApp dbApp = new DBApp();
+		SQLTerm[] arrSQLTerms;
+		arrSQLTerms = new SQLTerm[2];
+		arrSQLTerms[0] = new SQLTerm();
+		arrSQLTerms[1] = new SQLTerm();
+		arrSQLTerms[0]._strTableName = "Student";
+		arrSQLTerms[0]._strColumnName = "name";
+		arrSQLTerms[0]._strOperator = "=";
+		arrSQLTerms[0]._objValue = "John Noor";
+		arrSQLTerms[1]._strTableName = "Student";
+		arrSQLTerms[1]._strColumnName = "gpa";
+		arrSQLTerms[1]._strOperator = "=";
+		arrSQLTerms[1]._objValue = new Double(1.5);
+		String[] strarrOperators = new String[1];
+		strarrOperators[0] = "OR";
+		// select * from Student where name = “John Noor” or gpa = 1.5;
+		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 
 	}
 }
