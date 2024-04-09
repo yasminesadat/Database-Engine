@@ -931,9 +931,44 @@ public class bplustree implements Serializable {
 
     /*
      * This method is used for select query with lower bound inclusive.
+     * 
      */
-    public Vector<String> rangeSearchWithLowerBoundInclusive() {
-        Vector<String> pages = new Vector<>();
+    public HashSet<String> rangeSearchWithLowerBoundInclusive(Object lowerBound) {
+        HashSet<String> pages = new HashSet<>();
+        // InternalNode currNode = this.root; // Start traversal from the root node
+
+        // while (currNode != null) {
+        // int index = binarySearch(currNode.keys, currNode.degree, lowerBound); //
+        // Binary search to find the key index
+
+        // if (index >= 0) {
+        // // If key is found, locate the leaf node containing the key
+        // LeafNode leaf = findLeafNode(currNode.childPointers[index], lowerBound);
+
+        // // Iterate through the dictionary pairs in the leaf node
+        // while (leaf != null) {
+        // DictionaryPair[] dps = leaf.dictionary;
+        // for (DictionaryPair dp : dps) {
+        // if (dp == null) {
+        // break;
+        // }
+        // // Check if the key falls within the lower bound
+        // if (compare(lowerBound, dp.key) <= 0) {
+        // for (String page : dp.values) {
+        // pages.add(page);
+        // }
+        // }
+        // }
+        // leaf = leaf.rightSibling; // Move to the next leaf node
+        // }
+        // break; // Exit the loop once the range is found
+        // } else {
+        // int childIndex = -index - 1; // Calculate the child index to traverse
+        // currNode = (InternalNode) currNode.childPointers[childIndex]; // Move to the
+        // appropriate child node
+        // }
+        // }
+
         return pages;
     }
 
@@ -941,16 +976,37 @@ public class bplustree implements Serializable {
      * This method is used for select query with lower bound exclusive.
      * Uses the inclusive and adds a remove condition.
      */
-    public Vector<String> rangeSearchWithLowerBoundExclusive() {
-        Vector<String> pages = new Vector<>();
+    public HashSet<String> rangeSearchWithLowerBoundExclusive() {
+        HashSet<String> pages = new HashSet<>();
         return pages;
     }
 
     /*
      * This method is used for select query with upper bound inclusive.
      */
-    public Vector<String> rangeSearchWithUpperBoundInclusive() {
-        Vector<String> pages = new Vector<>();
+    public HashSet<String> rangeSearchWithUpperBoundInclusive(Object upperBound) {
+        HashSet<String> pages = new HashSet<>();
+        // Traverse the B+ tree to find pages within the specified range
+        LeafNode currNode = this.firstLeaf;
+        while (currNode != null) {
+            DictionaryPair[] dps = currNode.dictionary;
+            for (DictionaryPair dp : dps) {
+                // Special Case of deletion
+                if (currNode.numPairs == 0 || dp == null) {
+                    continue;
+                }
+                // Check if the key falls within the upper bound
+                if (compare(upperBound, dp.key) >= 0) {
+                    for (String page : dp.values) {
+                        pages.add(page);
+                    }
+                } else {
+                    break;
+                }
+            }
+            currNode = currNode.rightSibling;
+        }
+
         return pages;
     }
 
@@ -959,8 +1015,29 @@ public class bplustree implements Serializable {
      * Uses the inclusive and adds a remove condition.
      */
 
-    public Vector<String> rangeSearchWithUpperBoundExclusive() {
-        Vector<String> pages = new Vector<>();
+    public HashSet<String> rangeSearchWithUpperBoundExclusive(Object upperBound) {
+        HashSet<String> pages = new HashSet<>();
+        // Traverse the B+ tree to find pages within the specified range
+        LeafNode currNode = this.firstLeaf;
+        while (currNode != null) {
+            DictionaryPair[] dps = currNode.dictionary;
+            for (DictionaryPair dp : dps) {
+                // Special Case of deletion
+                if (currNode.numPairs == 0 || dp == null) {
+                    continue;
+                }
+                // Check if the key falls within the upper bound
+                if (compare(upperBound, dp.key) > 0) {
+                    for (String page : dp.values) {
+                        pages.add(page);
+                    }
+                } else {
+                    break;
+                }
+            }
+            currNode = currNode.rightSibling;
+        }
+
         return pages;
     }
 
@@ -1621,26 +1698,26 @@ public class bplustree implements Serializable {
         // b2.insert(6.7, null);
         // b2.printTree();
 
+        // test when deleted nodes are there
         bplustree b3 = new bplustree(3);
         b3.insert("seif", "5");
-        b3.insert("seif", "6");
-        b3.insert("seif", "7");
-        b3.insert("yasmine", null);
-        b3.insert("ziad", null);
+        b3.insert("yasmine", "1");
+        b3.insert("ziad", "3");
+        b3.insert("youssef", "10");
+        b3.insert("ali", "11");
         b3.insert("ahmed", "9");
         b3.delete("ahmed", "9");
-        b3.delete("ziad", null);
-        b3.insert("ahmed", null);
-        b3.insert("ahmed2", null);
-        b3.insert("ahmed3", null);
-        b3.insert("ahmed1", null);
-        b3.delete("ahmed2", "null");
-        b3.delete("ahmed2", "null");
+        b3.delete("ziad", "7");
+        b3.insert("ahmed4", "4");
+        b3.insert("ahmed2", "3");
+        b3.insert("ahmed3", "2");
+        b3.insert("ahmed1", "1");
+        b3.delete("yasmine", "1");
         b3.delete("seif", "5");
-        b3.delete("seif", "6");
-        b3.delete("seif", "7");
+        b3.delete("ali", "11");
+
         b3.printTree();
-        System.out.println(b3.findLeafNodeShouldContainKey("seif"));
+        System.out.println(b3.rangeSearchWithUpperBoundExclusive("yy"));
 
         // bplustree b4 = new bplustree(3);
         // b4.insert(20, "3");
