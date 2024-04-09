@@ -535,6 +535,11 @@ public class DBApp {
 		Hashtable<String, String> indices = loadAllIndices(arrSQLTerms[0]._strTableName);
 		boolean useIndex = queryOptimizer(arrSQLTerms, strarrOperators, indices);
 		System.out.println("useIndex:" + useIndex);
+		if (useIndex) {
+			// insert index usage
+		} else {
+			// insert tuple manipulation
+		}
 		return null;
 	}
 
@@ -855,15 +860,15 @@ public class DBApp {
 			if (operations.get(j).equals("AND")) {
 				Boolean resultAND = (Boolean) operations.get(j - 1) || (Boolean) operations.get(j + 1);
 				operations.remove(j - 1);
-				System.out.println("inside: " + operations);
 				operations.remove(j);
 				operations.set(j - 1, resultAND);
-				System.out.println("inside: " + operations);
 			} else
 				j += 2;
 		}
 		System.out.println("After processing ANDs");
 		System.out.println(operations);
+		// XOR and OR operators will require opening all pages if any don't have an
+		// index
 		if (!operations.contains(false)) {
 			return true;
 		} else {
@@ -1050,10 +1055,11 @@ public class DBApp {
 	public static void main(String[] args) throws DBAppException {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
-		arrSQLTerms = new SQLTerm[3];
+		arrSQLTerms = new SQLTerm[4];
 		arrSQLTerms[0] = new SQLTerm();
 		arrSQLTerms[1] = new SQLTerm();
 		arrSQLTerms[2] = new SQLTerm();
+		arrSQLTerms[3] = new SQLTerm();
 		arrSQLTerms[0]._strTableName = "Student";
 		arrSQLTerms[0]._strColumnName = "name";
 		arrSQLTerms[0]._strOperator = "=";
@@ -1063,13 +1069,18 @@ public class DBApp {
 		arrSQLTerms[1]._strOperator = "=";
 		arrSQLTerms[1]._objValue = new Double(1.5);
 		arrSQLTerms[2]._strTableName = "Student";
-		arrSQLTerms[2]._strColumnName = "id";
+		arrSQLTerms[2]._strColumnName = "name";
 		arrSQLTerms[2]._strOperator = "=";
-		arrSQLTerms[2]._objValue = new Integer(1);
+		arrSQLTerms[2]._objValue = "Ahmed";
+		arrSQLTerms[3]._strTableName = "Student";
+		arrSQLTerms[3]._strColumnName = "name";
+		arrSQLTerms[3]._strOperator = "=";
+		arrSQLTerms[3]._objValue = "Yasmine";
 
-		String[] strarrOperators = new String[2];
-		strarrOperators[0] = "OR";
-		strarrOperators[1] = "AND";
+		String[] strarrOperators = new String[3];
+		strarrOperators[0] = "AND";
+		strarrOperators[1] = "OR";
+		strarrOperators[2] = "AND";
 		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 
 	}
