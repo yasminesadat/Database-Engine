@@ -11,4 +11,9 @@ public class SQLTerm {
 
 	}
 
+	public boolean isNull() {
+		return _strOperator == null || _objValue == null || _strColumnName == null
+				|| _strTableName == null;
+	}
+
 }

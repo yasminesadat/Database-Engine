@@ -532,6 +532,9 @@ public class DBApp {
 	public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
 		checkDataTypesForSelect(arrSQLTerms);
+		Hashtable<String, String> indices = loadAllIndices(arrSQLTerms[0]._strTableName);
+		boolean useIndex = queryOptimizer(arrSQLTerms, strarrOperators, indices);
+		System.out.println("useIndex:" + useIndex);
 		return null;
 	}
 
@@ -804,12 +807,67 @@ public class DBApp {
 			throw new DBAppException(e.getMessage());
 		}
 		for (SQLTerm term : arrSQLTerms) {
+			if (term == null) {
+				throw new DBAppException("CHECK DATA: SQL Term is equal to null");
+			}
+			if (term.isNull()) {
+				throw new DBAppException("CHECK DATA: Null exception for SQL Term provided");
+			}
+
 			if (!columnData.containsKey(term._strColumnName)) {
 				throw new DBAppException("CHECK DATA: Column " + term._strColumnName + " doesn't exist in the table");
 			}
 			if (!term._objValue.getClass().getTypeName().toLowerCase().equals(columnData.get(term._strColumnName)))
 				throw new DBAppException("CHECK DATA: You have entered an in compatible "
 						+ term._objValue.getClass().getTypeName().toLowerCase() + " for " + term._strColumnName);
+		}
+
+	}
+
+	/*
+	 * logic behind it is avoid inefficeint use of indices if all pages will need
+	 * to
+	 * be opened
+	 * for a non-indexed column with a certain operator
+	 */
+	public boolean queryOptimizer(SQLTerm[] arrSQLTerms, String[] strarrOperators, Hashtable<String, String> indices) {
+		// check expression with indices and operators
+		int i = 0;
+		Vector<Object> operations = new Vector<>();
+		for (SQLTerm term : arrSQLTerms) {
+			// if != operator index is of no use
+			if (indices.containsValue(term._strColumnName) && !term._strOperator.equals("!=")) {
+				operations.add(true);
+			} else {
+				operations.add(false);
+			}
+			if (i < strarrOperators.length)
+				operations.add(strarrOperators[i++]);
+		}
+		System.out.println("equation: " + operations);
+		// all have indices
+		if (!operations.contains(false)) {
+			return true;
+		}
+		// process AND
+		int j = 1;
+		while (j < operations.size() - 1) {
+			if (operations.get(j).equals("AND")) {
+				Boolean resultAND = (Boolean) operations.get(j - 1) || (Boolean) operations.get(j + 1);
+				operations.remove(j - 1);
+				System.out.println("inside: " + operations);
+				operations.remove(j);
+				operations.set(j - 1, resultAND);
+				System.out.println("inside: " + operations);
+			} else
+				j += 2;
+		}
+		System.out.println("After processing ANDs");
+		System.out.println(operations);
+		if (!operations.contains(false)) {
+			return true;
+		} else {
+			return false;
 		}
 
 	}
@@ -992,9 +1050,10 @@ public class DBApp {
 	public static void main(String[] args) throws DBAppException {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
-		arrSQLTerms = new SQLTerm[2];
+		arrSQLTerms = new SQLTerm[3];
 		arrSQLTerms[0] = new SQLTerm();
 		arrSQLTerms[1] = new SQLTerm();
+		arrSQLTerms[2] = new SQLTerm();
 		arrSQLTerms[0]._strTableName = "Student";
 		arrSQLTerms[0]._strColumnName = "name";
 		arrSQLTerms[0]._strOperator = "=";
@@ -1003,9 +1062,14 @@ public class DBApp {
 		arrSQLTerms[1]._strColumnName = "gpa";
 		arrSQLTerms[1]._strOperator = "=";
 		arrSQLTerms[1]._objValue = new Double(1.5);
-		String[] strarrOperators = new String[1];
+		arrSQLTerms[2]._strTableName = "Student";
+		arrSQLTerms[2]._strColumnName = "id";
+		arrSQLTerms[2]._strOperator = "=";
+		arrSQLTerms[2]._objValue = new Integer(1);
+
+		String[] strarrOperators = new String[2];
 		strarrOperators[0] = "OR";
-		// select * from Student where name = “John Noor” or gpa = 1.5;
+		strarrOperators[1] = "AND";
 		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 
 	}
