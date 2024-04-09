@@ -929,6 +929,41 @@ public class bplustree implements Serializable {
         }
     }
 
+    /*
+     * This method is used for select query with lower bound inclusive.
+     */
+    public Vector<String> rangeSearchWithLowerBoundInclusive() {
+        Vector<String> pages = new Vector<>();
+        return pages;
+    }
+
+    /*
+     * This method is used for select query with lower bound exclusive.
+     * Uses the inclusive and adds a remove condition.
+     */
+    public Vector<String> rangeSearchWithLowerBoundExclusive() {
+        Vector<String> pages = new Vector<>();
+        return pages;
+    }
+
+    /*
+     * This method is used for select query with upper bound inclusive.
+     */
+    public Vector<String> rangeSearchWithUpperBoundInclusive() {
+        Vector<String> pages = new Vector<>();
+        return pages;
+    }
+
+    /*
+     * This method is used for select query with upper bound exclusive.
+     * Uses the inclusive and adds a remove condition.
+     */
+
+    public Vector<String> rangeSearchWithUpperBoundExclusive() {
+        Vector<String> pages = new Vector<>();
+        return pages;
+    }
+
     /**
      * This method traverses the doubly linked list of the B+ tree and records
      * all values whose associated keys are within the range specified by
