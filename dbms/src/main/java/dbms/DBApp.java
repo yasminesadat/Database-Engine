@@ -523,6 +523,7 @@ public class DBApp {
 		throw new DBAppException("not implemented yet");
 	}
 
+	// https://piazza.com/class/lsbl61kzegk3qo/post/161
 	public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
 

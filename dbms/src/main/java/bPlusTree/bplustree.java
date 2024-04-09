@@ -1524,6 +1524,8 @@ public class bplustree implements Serializable {
     }
 
     public LeafNode findLeafNodeShouldContainKey(Object key) {
+        if (root == null)
+            return firstLeaf;
         Node node = this.root;
         while (node instanceof InternalNode) {
             InternalNode internalNode = (InternalNode) node;
@@ -1539,9 +1541,20 @@ public class bplustree implements Serializable {
 
             node = internalNode.childPointers[i];
         }
-        if (root == null)
-            return firstLeaf;
-        return ((LeafNode) node);
+        LeafNode n = (LeafNode) node;
+        // case of delete node can have no numPairs so try finding non-empty siblings
+        while (n != null && n.numPairs == 0) {
+            n = n.leftSibling;
+        }
+        // if still not found, try right siblings
+        if (n.numPairs == 0) {
+            n = ((LeafNode) node).rightSibling;
+            while (n != null && n.numPairs == 0) {
+                n = n.rightSibling;
+            }
+        }
+
+        return n;
 
     }
 
@@ -1586,8 +1599,13 @@ public class bplustree implements Serializable {
         b3.insert("ahmed2", null);
         b3.insert("ahmed3", null);
         b3.insert("ahmed1", null);
+        b3.delete("ahmed2", "null");
+        b3.delete("ahmed2", "null");
+        b3.delete("seif", "5");
+        b3.delete("seif", "6");
+        b3.delete("seif", "7");
         b3.printTree();
-        System.out.println("test");
+        System.out.println(b3.findLeafNodeShouldContainKey("seif"));
 
         // bplustree b4 = new bplustree(3);
         // b4.insert(20, "3");
