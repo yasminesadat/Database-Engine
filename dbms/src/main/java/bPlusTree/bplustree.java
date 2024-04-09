@@ -620,162 +620,6 @@ public class bplustree implements Serializable {
         }
     }
 
-    // TEST: my delete
-    // public void delete(Object key, String pageNum) {
-    // if (isEmpty()) {
-
-    // /* Flow of execution goes here when B+ tree has no dictionary pairs */
-
-    // System.err.println("Invalid Delete: The B+ tree is currently empty.");
-
-    // } else {
-
-    // // Get leaf node and attempt to find index of key to delete
-    // LeafNode ln = (this.root == null) ? this.firstLeaf : findLeafNode(key);
-    // int dpIndex = binarySearch(ln.dictionary, ln.numPairs, key);
-
-    // if (dpIndex < 0) {
-
-    // /* Flow of execution goes here when key is absent in B+ tree */
-
-    // System.err.println("Invalid Delete: Key unable to be found.");
-
-    // } else {
-
-    // // Successfully delete the dictionary pair or reduce the values in bucket
-    // ln.deleteValue(dpIndex, pageNum);
-    // // TEST PROPER REMOVAL
-    // if (ln.numPairs == 0) {
-    // // Remove leaf node from doubly linked list
-    // if (ln.leftSibling != null) {
-    // ln.leftSibling.rightSibling = ln.rightSibling;
-    // } else {
-    // // If ln is the first leaf, update the firstLeaf pointer
-    // this.firstLeaf = ln.rightSibling;
-    // }
-    // if (ln.rightSibling != null) {
-    // ln.rightSibling.leftSibling = ln.leftSibling;
-    // }
-    // // handles deletion of pointer from parent
-    // ln.parent.removePointerSpecial(ln);
-
-    // }
-    // // Check for deficiencies
-    // if (ln.isDeficient()) {
-
-    // LeafNode sibling;
-    // InternalNode parent = ln.parent;
-
-    // // Borrow: First, check the left sibling, then the right sibling
-    // if (ln.leftSibling != null &&
-    // ln.leftSibling.parent == ln.parent &&
-    // ln.leftSibling.isLendable()) {
-
-    // sibling = ln.leftSibling;
-    // DictionaryPair borrowedDP = sibling.dictionary[sibling.numPairs - 1];
-
-    // /*
-    // * Insert borrowed dictionary pair, sort dictionary,
-    // * and delete dictionary pair from sibling
-    // */
-    // ln.insert(borrowedDP);
-    // sortDictionary(ln.dictionary);
-    // sibling.delete(sibling.numPairs - 1);
-
-    // // Update key in parent if necessary
-    // int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
-    // if (!(compare(borrowedDP.key, parent.keys[pointerIndex - 1]) >= 0)) {
-    // parent.keys[pointerIndex - 1] = ln.dictionary[0].key;
-    // }
-
-    // } else if (ln.rightSibling != null &&
-    // ln.rightSibling.parent == ln.parent &&
-    // ln.rightSibling.isLendable()) {
-
-    // sibling = ln.rightSibling;
-    // DictionaryPair borrowedDP = sibling.dictionary[0];
-
-    // /*
-    // * Insert borrowed dictionary pair, sort dictionary,
-    // * and delete dictionary pair from sibling
-    // */
-    // ln.insert(borrowedDP);
-    // sibling.delete(0);
-    // sortDictionary(sibling.dictionary);
-
-    // // Update key in parent if necessary
-    // int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
-    // if (!(compare(borrowedDP.key, parent.keys[pointerIndex]) < 0)) {
-    // parent.keys[pointerIndex] = sibling.dictionary[0].key;
-    // }
-
-    // }
-
-    // // Merge: First, check the left sibling, then the right sibling
-    // else if (ln.leftSibling != null &&
-    // ln.leftSibling.parent == ln.parent &&
-    // ln.leftSibling.isMergeable()) {
-
-    // sibling = ln.leftSibling;
-    // int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
-
-    // // Remove key and child pointer from parent
-    // parent.removeKey(pointerIndex - 1);
-    // parent.removePointer(ln);
-
-    // // Update sibling pointer
-    // sibling.rightSibling = ln.rightSibling;
-
-    // // Check for deficiencies in parent
-    // if (parent.isDeficient()) {
-    // handleDeficiency(parent);
-    // }
-
-    // } else if (ln.rightSibling != null &&
-    // ln.rightSibling.parent == ln.parent &&
-    // ln.rightSibling.isMergeable()) {
-
-    // sibling = ln.rightSibling;
-    // int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
-
-    // // Remove key and child pointer from parent
-    // parent.removeKey(pointerIndex);
-    // parent.removePointer(pointerIndex);
-
-    // // Update sibling pointer
-    // sibling.leftSibling = ln.leftSibling;
-    // if (sibling.leftSibling == null) {
-    // firstLeaf = sibling;
-    // }
-
-    // if (parent.isDeficient()) {
-    // handleDeficiency(parent);
-    // }
-    // }
-
-    // } else if (this.root == null && this.firstLeaf.numPairs == 0) {
-
-    // /*
-    // * Flow of execution goes here when the deleted dictionary
-    // * pair was the only pair within the tree
-    // */
-
-    // // Set first leaf as null to indicate B+ tree is empty
-    // this.firstLeaf = null;
-
-    // } else {
-
-    // /*
-    // * The dictionary of the LeafNode object may need to be
-    // * sorted after a successful delete
-    // */
-    // sortDictionary(ln.dictionary);
-
-    // }
-    // }
-    // }
-    // }
-
     /**
      * Given an integer key and floating point value, this method inserts a
      * dictionary pair accordingly into the B+ tree.
@@ -935,49 +779,57 @@ public class bplustree implements Serializable {
      */
     public HashSet<String> rangeSearchWithLowerBoundInclusive(Object lowerBound) {
         HashSet<String> pages = new HashSet<>();
-        // InternalNode currNode = this.root; // Start traversal from the root node
-
-        // while (currNode != null) {
-        // int index = binarySearch(currNode.keys, currNode.degree, lowerBound); //
-        // Binary search to find the key index
-
-        // if (index >= 0) {
-        // // If key is found, locate the leaf node containing the key
-        // LeafNode leaf = findLeafNode(currNode.childPointers[index], lowerBound);
-
-        // // Iterate through the dictionary pairs in the leaf node
-        // while (leaf != null) {
-        // DictionaryPair[] dps = leaf.dictionary;
-        // for (DictionaryPair dp : dps) {
-        // if (dp == null) {
-        // break;
-        // }
-        // // Check if the key falls within the lower bound
-        // if (compare(lowerBound, dp.key) <= 0) {
-        // for (String page : dp.values) {
-        // pages.add(page);
-        // }
-        // }
-        // }
-        // leaf = leaf.rightSibling; // Move to the next leaf node
-        // }
-        // break; // Exit the loop once the range is found
-        // } else {
-        // int childIndex = -index - 1; // Calculate the child index to traverse
-        // currNode = (InternalNode) currNode.childPointers[childIndex]; // Move to the
-        // appropriate child node
-        // }
-        // }
+        // traverse tree levels to get first node
+        LeafNode currNode = findLeafNodeShouldContainKey(lowerBound);
+        while (currNode != null) {
+            DictionaryPair[] dps = currNode.dictionary;
+            for (DictionaryPair dp : dps) {
+                // Special Case of deletion
+                if (currNode.numPairs == 0 || dp == null) {
+                    continue;
+                }
+                // Check if the key falls within the lower bound
+                if (compare(lowerBound, dp.key) <= 0) {
+                    for (String page : dp.values) {
+                        pages.add(page);
+                    }
+                } else {
+                    break;
+                }
+            }
+            currNode = currNode.rightSibling;
+        }
 
         return pages;
     }
 
     /*
      * This method is used for select query with lower bound exclusive.
-     * Uses the inclusive and adds a remove condition.
+     * Uses the inclusive logic and adds a remove condition.
      */
-    public HashSet<String> rangeSearchWithLowerBoundExclusive() {
+    public HashSet<String> rangeSearchWithLowerBoundExclusive(Object lowerBound) {
         HashSet<String> pages = new HashSet<>();
+        // traverse tree levels to get first node
+        LeafNode currNode = findLeafNodeShouldContainKey(lowerBound);
+        while (currNode != null) {
+            DictionaryPair[] dps = currNode.dictionary;
+            for (DictionaryPair dp : dps) {
+                // Special Case of deletion
+                if (currNode.numPairs == 0 || dp == null) {
+                    continue;
+                }
+                // Check if the key falls within the lower bound
+                if (compare(lowerBound, dp.key) < 0) {
+                    for (String page : dp.values) {
+                        pages.add(page);
+                    }
+                } else {
+                    break;
+                }
+            }
+            currNode = currNode.rightSibling;
+        }
+
         return pages;
     }
 
@@ -1012,7 +864,7 @@ public class bplustree implements Serializable {
 
     /*
      * This method is used for select query with upper bound exclusive.
-     * Uses the inclusive and adds a remove condition.
+     * Uses the inclusive logic and adds a remove condition.
      */
 
     public HashSet<String> rangeSearchWithUpperBoundExclusive(Object upperBound) {
@@ -1717,7 +1569,7 @@ public class bplustree implements Serializable {
         b3.delete("ali", "11");
 
         b3.printTree();
-        System.out.println(b3.rangeSearchWithUpperBoundExclusive("yy"));
+        System.out.println(b3.rangeSearchWithLowerBoundInclusive("ahmed2"));
 
         // bplustree b4 = new bplustree(3);
         // b4.insert(20, "3");
@@ -1742,3 +1594,159 @@ public class bplustree implements Serializable {
     }
 
 }
+
+// TEST: my delete
+// public void delete(Object key, String pageNum) {
+// if (isEmpty()) {
+
+// /* Flow of execution goes here when B+ tree has no dictionary pairs */
+
+// System.err.println("Invalid Delete: The B+ tree is currently empty.");
+
+// } else {
+
+// // Get leaf node and attempt to find index of key to delete
+// LeafNode ln = (this.root == null) ? this.firstLeaf : findLeafNode(key);
+// int dpIndex = binarySearch(ln.dictionary, ln.numPairs, key);
+
+// if (dpIndex < 0) {
+
+// /* Flow of execution goes here when key is absent in B+ tree */
+
+// System.err.println("Invalid Delete: Key unable to be found.");
+
+// } else {
+
+// // Successfully delete the dictionary pair or reduce the values in bucket
+// ln.deleteValue(dpIndex, pageNum);
+// // TEST PROPER REMOVAL
+// if (ln.numPairs == 0) {
+// // Remove leaf node from doubly linked list
+// if (ln.leftSibling != null) {
+// ln.leftSibling.rightSibling = ln.rightSibling;
+// } else {
+// // If ln is the first leaf, update the firstLeaf pointer
+// this.firstLeaf = ln.rightSibling;
+// }
+// if (ln.rightSibling != null) {
+// ln.rightSibling.leftSibling = ln.leftSibling;
+// }
+// // handles deletion of pointer from parent
+// ln.parent.removePointerSpecial(ln);
+
+// }
+// // Check for deficiencies
+// if (ln.isDeficient()) {
+
+// LeafNode sibling;
+// InternalNode parent = ln.parent;
+
+// // Borrow: First, check the left sibling, then the right sibling
+// if (ln.leftSibling != null &&
+// ln.leftSibling.parent == ln.parent &&
+// ln.leftSibling.isLendable()) {
+
+// sibling = ln.leftSibling;
+// DictionaryPair borrowedDP = sibling.dictionary[sibling.numPairs - 1];
+
+// /*
+// * Insert borrowed dictionary pair, sort dictionary,
+// * and delete dictionary pair from sibling
+// */
+// ln.insert(borrowedDP);
+// sortDictionary(ln.dictionary);
+// sibling.delete(sibling.numPairs - 1);
+
+// // Update key in parent if necessary
+// int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
+// if (!(compare(borrowedDP.key, parent.keys[pointerIndex - 1]) >= 0)) {
+// parent.keys[pointerIndex - 1] = ln.dictionary[0].key;
+// }
+
+// } else if (ln.rightSibling != null &&
+// ln.rightSibling.parent == ln.parent &&
+// ln.rightSibling.isLendable()) {
+
+// sibling = ln.rightSibling;
+// DictionaryPair borrowedDP = sibling.dictionary[0];
+
+// /*
+// * Insert borrowed dictionary pair, sort dictionary,
+// * and delete dictionary pair from sibling
+// */
+// ln.insert(borrowedDP);
+// sibling.delete(0);
+// sortDictionary(sibling.dictionary);
+
+// // Update key in parent if necessary
+// int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
+// if (!(compare(borrowedDP.key, parent.keys[pointerIndex]) < 0)) {
+// parent.keys[pointerIndex] = sibling.dictionary[0].key;
+// }
+
+// }
+
+// // Merge: First, check the left sibling, then the right sibling
+// else if (ln.leftSibling != null &&
+// ln.leftSibling.parent == ln.parent &&
+// ln.leftSibling.isMergeable()) {
+
+// sibling = ln.leftSibling;
+// int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
+
+// // Remove key and child pointer from parent
+// parent.removeKey(pointerIndex - 1);
+// parent.removePointer(ln);
+
+// // Update sibling pointer
+// sibling.rightSibling = ln.rightSibling;
+
+// // Check for deficiencies in parent
+// if (parent.isDeficient()) {
+// handleDeficiency(parent);
+// }
+
+// } else if (ln.rightSibling != null &&
+// ln.rightSibling.parent == ln.parent &&
+// ln.rightSibling.isMergeable()) {
+
+// sibling = ln.rightSibling;
+// int pointerIndex = findIndexOfPointer(parent.childPointers, ln);
+
+// // Remove key and child pointer from parent
+// parent.removeKey(pointerIndex);
+// parent.removePointer(pointerIndex);
+
+// // Update sibling pointer
+// sibling.leftSibling = ln.leftSibling;
+// if (sibling.leftSibling == null) {
+// firstLeaf = sibling;
+// }
+
+// if (parent.isDeficient()) {
+// handleDeficiency(parent);
+// }
+// }
+
+// } else if (this.root == null && this.firstLeaf.numPairs == 0) {
+
+// /*
+// * Flow of execution goes here when the deleted dictionary
+// * pair was the only pair within the tree
+// */
+
+// // Set first leaf as null to indicate B+ tree is empty
+// this.firstLeaf = null;
+
+// } else {
+
+// /*
+// * The dictionary of the LeafNode object may need to be
+// * sorted after a successful delete
+// */
+// sortDictionary(ln.dictionary);
+
+// }
+// }
+// }
+// }
