@@ -26,6 +26,7 @@ import java.lang.Double;
 import java.lang.String;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class DBApp {
 	private static final String METADATA_PATH = "dbms/src/main/resources/metadata.csv";
@@ -520,7 +521,8 @@ public class DBApp {
 	public void deleteFromTable(String strTableName,
 			Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
-		throw new DBAppException("not implemented yet");
+		throw new DBAppException("");
+
 	}
 
 	// https://piazza.com/class/lsbl61kzegk3qo/post/161

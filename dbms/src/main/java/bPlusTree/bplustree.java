@@ -1554,22 +1554,18 @@ public class bplustree implements Serializable {
         bplustree b3 = new bplustree(3);
         b3.insert("seif", "5");
         b3.insert("yasmine", "1");
-        b3.insert("ziad", "3");
         b3.insert("youssef", "10");
         b3.insert("ali", "11");
         b3.insert("ahmed", "9");
-        b3.delete("ahmed", "9");
         b3.delete("ziad", "7");
-        b3.insert("ahmed4", "4");
-        b3.insert("ahmed2", "3");
-        b3.insert("ahmed3", "2");
-        b3.insert("ahmed1", "1");
-        b3.delete("yasmine", "1");
+        b3.insert("hana", "4");
+        b3.insert("farah", "3");
+        b3.insert("jaydaa", "2");
+        b3.insert("alia", "1");
         b3.delete("seif", "5");
-        b3.delete("ali", "11");
 
         b3.printTree();
-        System.out.println(b3.rangeSearchWithLowerBoundInclusive("ahmed2"));
+        System.out.println(b3.rangeSearchWithLowerBoundInclusive("ahmed0"));
 
         // bplustree b4 = new bplustree(3);
         // b4.insert(20, "3");
