@@ -1551,21 +1551,21 @@ public class bplustree implements Serializable {
         // b2.printTree();
 
         // test when deleted nodes are there
-        bplustree b3 = new bplustree(3);
-        b3.insert("seif", "5");
-        b3.insert("yasmine", "1");
-        b3.insert("youssef", "10");
-        b3.insert("ali", "11");
-        b3.insert("ahmed", "9");
-        b3.delete("ziad", "7");
-        b3.insert("hana", "4");
-        b3.insert("farah", "3");
-        b3.insert("jaydaa", "2");
-        b3.insert("alia", "1");
-        b3.delete("seif", "5");
+        // bplustree b3 = new bplustree(3);
+        // b3.insert("seif", "5");
+        // b3.insert("yasmine", "1");
+        // b3.insert("youssef", "10");
+        // b3.insert("ali", "11");
+        // b3.insert("ahmed", "9");
+        // b3.delete("ziad", "7");
+        // b3.insert("hana", "4");
+        // b3.insert("farah", "3");
+        // b3.insert("jaydaa", "2");
+        // b3.insert("alia", "1");
+        // b3.delete("seif", "5");
 
-        b3.printTree();
-        System.out.println(b3.rangeSearchWithLowerBoundInclusive("ahmed0"));
+        // b3.printTree();
+        // System.out.println(b3.rangeSearchWithLowerBoundInclusive("ahmed0"));
 
         // bplustree b4 = new bplustree(3);
         // b4.insert(20, "3");
@@ -1586,6 +1586,12 @@ public class bplustree implements Serializable {
         // // here loop on all other indices
         // // this age index->find age=20
         // Vector<String> temp = b4.search(20);
+        bplustree t = new bplustree(20);
+        t.insert(1, "1");
+        t.insert(2, "1");
+        t.printTree();
+        t.delete(1, "1");
+        t.printTree();
 
     }
 

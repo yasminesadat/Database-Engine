@@ -531,12 +531,19 @@ public class DBApp {
 	// Number of operators = number of terms - 1
 	public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
+		// Check for valid input
+		if (arrSQLTerms.length == 0 || strarrOperators.length != arrSQLTerms.length - 1) {
+			throw new DBAppException("Invalid input: Term and Operator arrays mismatch");
+		}
 		checkDataTypesForSelect(arrSQLTerms);
 		Hashtable<String, String> indices = loadAllIndices(arrSQLTerms[0]._strTableName);
 		boolean useIndex = queryOptimizer(arrSQLTerms, strarrOperators, indices);
 		System.out.println("useIndex:" + useIndex);
+		// in either case, sort the terms for direct evaluation?
+
 		if (useIndex) {
 			// insert index usage
+
 		} else {
 			// insert tuple manipulation
 		}
@@ -779,9 +786,6 @@ public class DBApp {
 	}
 
 	public void checkDataTypesForSelect(SQLTerm[] arrSQLTerms) throws DBAppException {
-		if (arrSQLTerms.length == 0) {
-			throw new DBAppException("CHECK DATA: No SQL terms have been provided.");
-		}
 		String strTableName = arrSQLTerms[0]._strTableName;
 		BufferedReader br = null;
 		String line = "";
@@ -810,6 +814,9 @@ public class DBApp {
 			br.close();
 		} catch (IOException e) {
 			throw new DBAppException(e.getMessage());
+		}
+		if (!foundTable) {
+			throw new DBAppException("CHECK DATA: Table doesn't exist");
 		}
 		for (SQLTerm term : arrSQLTerms) {
 			if (term == null) {
@@ -1052,7 +1059,7 @@ public class DBApp {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
 		arrSQLTerms = new SQLTerm[4];
-		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "John");
+		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "John Noor");
 		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">", 1.5);
 		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "!=", 4.0);
 		arrSQLTerms[3] = new SQLTerm("Student", "gpa", "=", 1.5);
