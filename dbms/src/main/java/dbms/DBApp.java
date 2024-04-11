@@ -869,11 +869,7 @@ public class DBApp {
 		System.out.println(operations);
 		// XOR and OR operators will require opening all pages if any don't have an
 		// index
-		if (!operations.contains(false)) {
-			return true;
-		} else {
-			return false;
-		}
+		return !operations.contains(false);
 
 	}
 
@@ -1056,27 +1052,10 @@ public class DBApp {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
 		arrSQLTerms = new SQLTerm[4];
-		arrSQLTerms[0] = new SQLTerm();
-		arrSQLTerms[1] = new SQLTerm();
-		arrSQLTerms[2] = new SQLTerm();
-		arrSQLTerms[3] = new SQLTerm();
-		arrSQLTerms[0]._strTableName = "Student";
-		arrSQLTerms[0]._strColumnName = "name";
-		arrSQLTerms[0]._strOperator = "=";
-		arrSQLTerms[0]._objValue = "John Noor";
-		arrSQLTerms[1]._strTableName = "Student";
-		arrSQLTerms[1]._strColumnName = "gpa";
-		arrSQLTerms[1]._strOperator = "=";
-		arrSQLTerms[1]._objValue = new Double(1.5);
-		arrSQLTerms[2]._strTableName = "Student";
-		arrSQLTerms[2]._strColumnName = "name";
-		arrSQLTerms[2]._strOperator = "=";
-		arrSQLTerms[2]._objValue = "Ahmed";
-		arrSQLTerms[3]._strTableName = "Student";
-		arrSQLTerms[3]._strColumnName = "name";
-		arrSQLTerms[3]._strOperator = "=";
-		arrSQLTerms[3]._objValue = "Yasmine";
-
+		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "John");
+		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">", 1.5);
+		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "!=", 4.0);
+		arrSQLTerms[3] = new SQLTerm("Student", "gpa", "=", 1.5);
 		String[] strarrOperators = new String[3];
 		strarrOperators[0] = "AND";
 		strarrOperators[1] = "OR";
