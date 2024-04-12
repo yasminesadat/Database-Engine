@@ -20,13 +20,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.lang.Integer;
 import java.lang.Double;
 import java.lang.String;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class DBApp {
 	private static final String METADATA_PATH = "dbms/src/main/resources/metadata.csv";
@@ -525,10 +525,11 @@ public class DBApp {
 
 	}
 
-	// https://piazza.com/class/lsbl61kzegk3qo/post/161
 	// _strOperator can be >, >=, <, <=, != or = (6 operators)
 	// AND, OR, or XOR
 	// Number of operators = number of terms - 1
+	// Assume valid operators and terms
+	// Remember base case: one select with no operators
 	public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
 		// Check for valid input
@@ -536,16 +537,70 @@ public class DBApp {
 			throw new DBAppException("Invalid input: Term and Operator arrays mismatch");
 		}
 		checkDataTypesForSelect(arrSQLTerms);
-		Hashtable<String, String> indices = loadAllIndices(arrSQLTerms[0]._strTableName);
-		boolean useIndex = queryOptimizer(arrSQLTerms, strarrOperators, indices);
+		Hashtable<String, String> columns = loadAllColumnsHavingIndex(arrSQLTerms[0]._strTableName);
+		Vector<Object> operations = queryOperationsGenerator(arrSQLTerms, strarrOperators, columns);
+		// passed by reference to method
+		Vector<Object> operationsCopy = new Vector<>();
+		operationsCopy.addAll(operations);
+		boolean useIndex = queryOptimizer(operationsCopy);
+		// keep only sql terms true and false in operations vector to access it with
+		// same index
+		operations.removeIf(element -> element instanceof String);
+		System.out.println("operations" + operations);
 		System.out.println("useIndex:" + useIndex);
-		// in either case, sort the terms for direct evaluation?
-
 		if (useIndex) {
-			// insert index usage
+			// as not to contain duplicates
+			HashSet<String> pages = new HashSet<>();
+			for (int i = 0; i < arrSQLTerms.length; i++) {
+				// only case that can be null when it's an AND with possibly multiple ones after
+				// each other
+				if ((boolean) operations.get(i)) {
+					bplustree b = deserializeIndex(columns.get(arrSQLTerms[i]._strColumnName));
+					HashSet<String> intermediateRes = executeindexedSQlterm(b, arrSQLTerms[i]);
+					// first term
+					if (i == 0) {
+						pages.addAll(intermediateRes);
+					} else { // know operation and do it on pages
+						switch (strarrOperators[i - 1]) {
+							case "AND":
+								System.out.println(i + ": entered AND");
+								System.out.println("intermediate " + intermediateRes);
+								pages.retainAll(intermediateRes);
+								break;
+							default: // OR or XOR
+								System.out.println(i + ": entered OR/XOR");
+								System.out.println("intermediate " + intermediateRes);
+								pages.addAll(intermediateRes);
+						}
+
+					}
+				} else {
+					int oldValue = i;
+					// handle terms that won't make use of index or don't have indices
+					do {
+						i++;
+					} while (i < arrSQLTerms.length - 1 && !(boolean) operations.get(i));
+
+					// special case of first term
+					if (oldValue == 0) {
+						bplustree b = deserializeIndex(columns.get(arrSQLTerms[i]._strColumnName));
+						HashSet<String> intermediateRes = executeindexedSQlterm(b, arrSQLTerms[i]);
+						pages.addAll(intermediateRes);
+						i++;
+					} else { // enter loop normally
+						i--;
+					}
+				}
+				System.out.println(i + ": " + pages);
+
+			}
+			System.out.println("final:" + pages);
+			// find tuples within pages and return iterator
+			System.out.println(searchRecordswithinSelectedPages(pages, arrSQLTerms, strarrOperators));
+			return searchRecordswithinSelectedPages(pages, arrSQLTerms, strarrOperators).iterator();
 
 		} else {
-			// insert tuple manipulation
+			// insert tuple manipulation - Seif's part
 		}
 		return null;
 	}
@@ -785,6 +840,8 @@ public class DBApp {
 
 	}
 
+	////////////////////////////////////////// SELECT HELPERS
+	////////////////////////////////////////// //////////////////////////////////////////
 	public void checkDataTypesForSelect(SQLTerm[] arrSQLTerms) throws DBAppException {
 		String strTableName = arrSQLTerms[0]._strTableName;
 		BufferedReader br = null;
@@ -836,19 +893,14 @@ public class DBApp {
 
 	}
 
-	/*
-	 * logic behind it is avoid inefficeint use of indices if all pages will need
-	 * to
-	 * be opened
-	 * for a non-indexed column with a certain operator
-	 */
-	public boolean queryOptimizer(SQLTerm[] arrSQLTerms, String[] strarrOperators, Hashtable<String, String> indices) {
+	public Vector<Object> queryOperationsGenerator(SQLTerm[] arrSQLTerms, String[] strarrOperators,
+			Hashtable<String, String> columnsHavingIndex) {
 		// check expression with indices and operators
 		int i = 0;
 		Vector<Object> operations = new Vector<>();
 		for (SQLTerm term : arrSQLTerms) {
 			// if != operator index is of no use
-			if (indices.containsValue(term._strColumnName) && !term._strOperator.equals("!=")) {
+			if (columnsHavingIndex.containsKey(term._strColumnName) && !term._strOperator.equals("!=")) {
 				operations.add(true);
 			} else {
 				operations.add(false);
@@ -857,58 +909,128 @@ public class DBApp {
 				operations.add(strarrOperators[i++]);
 		}
 		System.out.println("equation: " + operations);
+		return operations;
+	}
+
+	/*
+	 * logic behind it is avoid inefficeint use of indices if all pages will need
+	 * to
+	 * be opened
+	 * for a non-indexed column with a certain operator
+	 */
+	public boolean queryOptimizer(Vector<Object> operations) {
 		// all have indices
 		if (!operations.contains(false)) {
 			return true;
 		}
-		// process AND
+		// process sequentially all operators
 		int j = 1;
 		while (j < operations.size() - 1) {
+			// AND case: if any have index open these pages from bPlusTree
 			if (operations.get(j).equals("AND")) {
 				Boolean resultAND = (Boolean) operations.get(j - 1) || (Boolean) operations.get(j + 1);
 				operations.remove(j - 1);
 				operations.remove(j);
 				operations.set(j - 1, resultAND);
-			} else
-				j += 2;
+				// OR or XOR case: both must have indices for an index to be used
+				// otherwise, must loop over all tuples
+			} else {
+				Boolean result = (Boolean) operations.get(j - 1) && (Boolean) operations.get(j + 1);
+				operations.remove(j - 1);
+				operations.remove(j);
+				operations.set(j - 1, result);
+			}
 		}
-		System.out.println("After processing ANDs");
+		System.out.println("After processing");
 		System.out.println(operations);
 		// XOR and OR operators will require opening all pages if any don't have an
 		// index
-		return !operations.contains(false);
+		return (Boolean) operations.get(0);
 
 	}
 
-	// public int binarySearchWithoutIndex(String strTableName, String
-	// strClusteringKey, Object clusteringKeyValue)
-	// throws DBAppException {
-	// Table t = deserializeTable(strTableName);
-	// boolean foundPage = false;
-	// Page p = null;
-	// for (String pageName : t.getStrPages()) {
-	// p = deserializePage(pageName);
-	// Object first = p.getFirstValue().getHtblTuple().get(strClusteringKey);
-	// Object last = p.getLastValue().getHtblTuple().get(strClusteringKey);
-	// if (clusteringKeyValue instanceof String)
-	// foundPage = ((String) first).compareTo((String) clusteringKeyValue) <= 0
-	// && ((String) last).compareTo((String) clusteringKeyValue) >= 0;
-	// else if (clusteringKeyValue instanceof Integer)
-	// foundPage = ((Integer) first).compareTo((Integer) clusteringKeyValue) <= 0
-	// && ((Integer) last).compareTo((Integer) clusteringKeyValue) >= 0;
-	// else
-	// foundPage = ((Double) first).compareTo((Double) clusteringKeyValue) <= 0
-	// && ((Double) last).compareTo((Double) clusteringKeyValue) >= 0;
-	// if (foundPage)
-	// break;
+	public HashSet<String> executeindexedSQlterm(bplustree indextree, SQLTerm sql) {
+		String operator = sql._strOperator;
 
-	// }
-	// // if not page can potentially have this value for the clusteringKey
-	// if (!foundPage) {
-	// return -1;
-	// } else
-	// return p.binarySearch(strClusteringKey, clusteringKeyValue);
-	// }
+		if (operator.equals(">")) {
+			return indextree.rangeSearchWithLowerBoundExclusive(sql._objValue);
+		} else if (operator.equals(">=")) {
+			return indextree.rangeSearchWithLowerBoundInclusive(sql._objValue);
+		} else if (operator.equals("<")) {
+			return indextree.rangeSearchWithUpperBoundExclusive(sql._objValue);
+		} else if (operator.equals("<=")) {
+			return indextree.rangeSearchWithUpperBoundInclusive(sql._objValue);
+		} else if (operator.equals("=")) {
+			Vector<String> v = indextree.search(sql._objValue);
+			HashSet<String> h = new HashSet<>();
+			h.addAll(v);
+			return h;
+		}
+		return null;
+
+	}
+
+	public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String> pageNums, SQLTerm[] arrSQLTerms,
+			String[] strarrOperators) throws DBAppException {
+		Vector<Tuple> res = new Vector<>();
+		for (String page : pageNums) {
+			Page p = deserializePage(arrSQLTerms[0]._strTableName + "_" + page);
+			for (Tuple tuple : p.getRecords()) {
+				// know if each tuple satisfies the sql terms
+				Vector<Boolean> flags = new Vector<>();
+				for (SQLTerm sqlTerm : arrSQLTerms) {
+					flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
+				}
+				// process sequentially all operators
+				for (int j = 0; j < strarrOperators.length; j++) {
+					if (strarrOperators[j].equals("AND")) {
+						Boolean resultAND = flags.get(0) && flags.get(1);
+						flags.remove(0);
+						flags.remove(0);
+						flags.add(0, resultAND);
+
+					} else if (strarrOperators[j].equals("OR")) {
+						Boolean resultOR = flags.get(0) || flags.get(1);
+						flags.remove(0);
+						flags.remove(0);
+						flags.add(0, resultOR);
+
+					} else {
+						Boolean resultXOR = flags.get(0) ^ flags.get(1);
+						flags.remove(0);
+						flags.remove(0);
+						flags.add(0, resultXOR);
+					}
+				}
+				if (flags.get(0)) {
+					res.add(tuple);
+				}
+			}
+		}
+		return res;
+	}
+
+	public Boolean tupleSatisfiesSQLTerm(Tuple tuple, SQLTerm sqlTerm) {
+		String operator = sqlTerm._strOperator;
+		Hashtable<String, Object> htblTuple = tuple.getHtblTuple();
+		Object ob = htblTuple.get(sqlTerm._strColumnName);
+		Object objValue = sqlTerm._objValue;
+		int comparable;
+		// already checked csv before
+		if (ob instanceof Integer) {
+			comparable = ((Integer) ob).compareTo((Integer) objValue);
+		} else if (ob instanceof Double) {
+			comparable = ((Double) ob).compareTo((Double) objValue);
+		} else {
+			comparable = ((String) ob).compareTo((String) objValue);
+		}
+		return (operator.equals(">") && comparable > 0) || (operator.equals(">=") && comparable >= 0)
+				|| (operator.equals("<") && comparable < 0) || (operator.equals("<=") && comparable <= 0)
+				|| (operator.equals("=") && comparable == 0) || (operator.equals("!=") && comparable != 0);
+
+	}
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	// get Page
 	public Page binarySearchWithoutIndex(String strTableName, String strClusteringKey, Object clusteringKeyValue)
 			throws DBAppException {
@@ -1011,7 +1133,6 @@ public class DBApp {
 					foundPage = foundPage || ((Double) last).compareTo((Double) clusteringKeyValue) < 0;
 				}
 			}
-
 			if (foundPage)
 				return Integer.parseInt(p.getPageNum());
 			if (goLeft) {
@@ -1051,6 +1172,33 @@ public class DBApp {
 		return indices;
 	}
 
+	// returns key: ColName, value: IndexName
+	public Hashtable<String, String> loadAllColumnsHavingIndex(String strTableName) throws DBAppException {
+		Hashtable<String, String> indices = new Hashtable<>();
+		try {
+			String line = "";
+			boolean foundTable = false;
+			BufferedReader br = new BufferedReader(new FileReader(METADATA_PATH));
+			while ((line = br.readLine()) != null) {
+				String[] s = line.split(", ");
+				if (foundTable && !s[0].equals(strTableName)) {
+					break;
+				}
+				if (s[0].equals(strTableName)) {
+					foundTable = true;
+					if (!s[4].equals("null")) {
+						indices.put(s[1], s[4]);
+					}
+
+				}
+			}
+			br.close();
+		} catch (IOException e) {
+			throw new DBAppException(e.getMessage());
+		}
+		return indices;
+	}
+
 	/////////////////////////////////////////// END
 	/////////////////////////////////////////// //////////////////////////////////////////////////////////
 
@@ -1058,16 +1206,47 @@ public class DBApp {
 	public static void main(String[] args) throws DBAppException {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
-		arrSQLTerms = new SQLTerm[4];
-		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "John Noor");
-		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">", 1.5);
-		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "!=", 4.0);
-		arrSQLTerms[3] = new SQLTerm("Student", "gpa", "=", 1.5);
-		String[] strarrOperators = new String[3];
+		arrSQLTerms = new SQLTerm[3];
+		arrSQLTerms[0] = new SQLTerm("Student", "name", "!=", "Dalia Noor");
+		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.88);
+		arrSQLTerms[2] = new SQLTerm("Student", "id", "=", 800);
+
+		// arrSQLTerms[3] = new SQLTerm("Student", "gpa", "!=", 1.5);
+		String[] strarrOperators = new String[2];
 		strarrOperators[0] = "AND";
-		strarrOperators[1] = "OR";
-		strarrOperators[2] = "AND";
+		strarrOperators[1] = "XOR";
+		// strarrOperators[2] = "AND";
 		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 
 	}
 }
+
+// public int binarySearchWithoutIndex(String strTableName, String
+// strClusteringKey, Object clusteringKeyValue)
+// throws DBAppException {
+// Table t = deserializeTable(strTableName);
+// boolean foundPage = false;
+// Page p = null;
+// for (String pageName : t.getStrPages()) {
+// p = deserializePage(pageName);
+// Object first = p.getFirstValue().getHtblTuple().get(strClusteringKey);
+// Object last = p.getLastValue().getHtblTuple().get(strClusteringKey);
+// if (clusteringKeyValue instanceof String)
+// foundPage = ((String) first).compareTo((String) clusteringKeyValue) <= 0
+// && ((String) last).compareTo((String) clusteringKeyValue) >= 0;
+// else if (clusteringKeyValue instanceof Integer)
+// foundPage = ((Integer) first).compareTo((Integer) clusteringKeyValue) <= 0
+// && ((Integer) last).compareTo((Integer) clusteringKeyValue) >= 0;
+// else
+// foundPage = ((Double) first).compareTo((Double) clusteringKeyValue) <= 0
+// && ((Double) last).compareTo((Double) clusteringKeyValue) >= 0;
+// if (foundPage)
+// break;
+
+// }
+// // if not page can potentially have this value for the clusteringKey
+// if (!foundPage) {
+// return -1;
+// } else
+// return p.binarySearch(strClusteringKey, clusteringKeyValue);
+// }
