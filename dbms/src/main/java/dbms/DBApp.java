@@ -1208,7 +1208,7 @@ public class DBApp {
 		SQLTerm[] arrSQLTerms;
 		arrSQLTerms = new SQLTerm[3];
 		arrSQLTerms[0] = new SQLTerm("Student", "name", "!=", "Dalia Noor");
-		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.88);
+		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">", 0.88);
 		arrSQLTerms[2] = new SQLTerm("Student", "id", "=", 800);
 
 		// arrSQLTerms[3] = new SQLTerm("Student", "gpa", "!=", 1.5);
