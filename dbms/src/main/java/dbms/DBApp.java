@@ -1207,14 +1207,14 @@ public class DBApp {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
 		arrSQLTerms = new SQLTerm[3];
-		arrSQLTerms[0] = new SQLTerm("Student", "name", "!=", "Dalia Noor");
+		arrSQLTerms[2] = new SQLTerm("Student", "name", "!=", "Dalia Noor");
 		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">", 0.88);
-		arrSQLTerms[2] = new SQLTerm("Student", "id", "=", 800);
+		arrSQLTerms[0] = new SQLTerm("Student", "id", "=", 800);
 
 		// arrSQLTerms[3] = new SQLTerm("Student", "gpa", "!=", 1.5);
 		String[] strarrOperators = new String[2];
-		strarrOperators[0] = "AND";
-		strarrOperators[1] = "XOR";
+		strarrOperators[1] = "AND";
+		strarrOperators[0] = "XOR";
 		// strarrOperators[2] = "AND";
 		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 
