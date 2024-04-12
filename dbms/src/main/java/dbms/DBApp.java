@@ -552,7 +552,8 @@ public class DBApp {
 			// as not to contain duplicates
 			HashSet<String> pages = new HashSet<>();
 			for (int i = 0; i < arrSQLTerms.length; i++) {
-				// only case that can be null when it's an AND with possibly multiple ones after
+				// only case that can be false when it's an AND with possibly multiple ones
+				// after
 				// each other
 				if ((boolean) operations.get(i)) {
 					bplustree b = deserializeIndex(columns.get(arrSQLTerms[i]._strColumnName));
@@ -586,7 +587,6 @@ public class DBApp {
 						bplustree b = deserializeIndex(columns.get(arrSQLTerms[i]._strColumnName));
 						HashSet<String> intermediateRes = executeindexedSQlterm(b, arrSQLTerms[i]);
 						pages.addAll(intermediateRes);
-						i++;
 					} else { // enter loop normally
 						i--;
 					}
