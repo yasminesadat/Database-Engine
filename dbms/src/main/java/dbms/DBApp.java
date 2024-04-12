@@ -583,7 +583,7 @@ public class DBApp {
 					} while (i < arrSQLTerms.length - 1 && !(boolean) operations.get(i));
 
 					// special case of first term
-					if (oldValue == 0) {
+					if (oldValue == 0 && (boolean) operations.get(i)) {
 						bplustree b = deserializeIndex(columns.get(arrSQLTerms[i]._strColumnName));
 						HashSet<String> intermediateRes = executeindexedSQlterm(b, arrSQLTerms[i]);
 						pages.addAll(intermediateRes);
