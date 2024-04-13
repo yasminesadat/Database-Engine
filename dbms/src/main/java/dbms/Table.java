@@ -9,9 +9,6 @@ import java.lang.String;
 
 public class Table implements Serializable {
     private final String strTableName;
-    // private final String strClusteringKeyColumn;
-    // private Hashtable<String, String> htblColNameType; // we only need the csv
-    // private Vector<Page> tblPages; //useless if we use Page Manager
     private Vector<String> strPages;
     private int nextPageNum = 1;
 
@@ -25,9 +22,7 @@ public class Table implements Serializable {
 
     public Table(String strTableName) {
         this.strTableName = strTableName;
-
         strPages = new Vector<String>();
-
         // then add it to the csv file
     }
 

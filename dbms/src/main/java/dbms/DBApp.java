@@ -1229,7 +1229,7 @@ public class DBApp {
 		String[] strarrOperators = new String[3];
 		strarrOperators[0] = "AND";
 		strarrOperators[1] = "XOR";
-		strarrOperators[2] = "AND";
+		strarrOperators[2] = "OR";
 		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 		while (resultSet.hasNext()) {
 			System.out.println(resultSet.next());
