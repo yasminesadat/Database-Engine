@@ -529,7 +529,6 @@ public class DBApp {
 	// _strOperator can be >, >=, <, <=, != or = (6 operators)
 	// AND, OR, or XOR
 	// Number of operators = number of terms - 1
-	// Assume valid operators and terms
 	// Remember base case: one select with no operators
 	public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
@@ -978,7 +977,8 @@ public class DBApp {
 		} else if (operator.equals("=")) {
 			Vector<String> v = indextree.search(sql._objValue);
 			HashSet<String> h = new HashSet<>();
-			h.addAll(v);
+			if (v != null)
+				h.addAll(v);
 			return h;
 		}
 		return null;
@@ -1222,13 +1222,13 @@ public class DBApp {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
 		arrSQLTerms = new SQLTerm[4];
-		arrSQLTerms[0] = new SQLTerm("Student", "name", "!=", "Dalia Noor");
-		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">", 0.88);
-		arrSQLTerms[2] = new SQLTerm("Student", "id", "!=", 900);
-		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "Zaky Noor");
+		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
+		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.0);
+		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "=", 100.0);
+		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
 		String[] strarrOperators = new String[3];
 		strarrOperators[0] = "AND";
-		strarrOperators[1] = "AND";
+		strarrOperators[1] = "XOR";
 		strarrOperators[2] = "AND";
 		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 		while (resultSet.hasNext()) {
