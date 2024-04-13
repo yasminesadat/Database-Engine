@@ -1,15 +1,16 @@
 
 import bPlusTree.bplustree;
 import dbms.*;
+import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.Objects;
 import java.util.Vector;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class JunitTests {
 	private static DBApp engine;
@@ -22,11 +23,11 @@ public class JunitTests {
 	// private static final String STRING_DATA_TYPE_NAME = "java.lang.String";
 	// private static final String INTEGER_DATA_TYPE_NAME = "java.lang.Integer";
 	// private static final String DOUBLE_DATA_TYPE_NAME = "java.lang.Double";
-	private static final String METADATA_PATH = "E:\\Semester 6\\Database 2\\Project\\GitHub\\DBEngineWithMaven\\dbms\\src\\main\\resources\\metadata.csv";
-	private static final String CONFIG_FILE_PATH = "E:\\Semester 6\\Database 2\\Project\\GitHub\\DBEngineWithMaven\\dbms\\src\\main\\resources\\DBApp.config";
-	private static final String TABLES_DIR = "E:\\Semester 6\\Database 2\\Project\\GitHub\\DBEngineWithMaven\\dbms\\src\\main\\resources\\Tables\\";
-	private static final String PAGES_DIR = "E:\\Semester 6\\Database 2\\Project\\GitHub\\DBEngineWithMaven\\dbms\\src\\main\\resources\\Pages\\";
-	private static final String INDICES_DIR = "E:\\Semester 6\\Database 2\\Project\\GitHub\\DBEngineWithMaven\\dbms\\src\\main\\resources\\Indices\\";
+	private static final String METADATA_PATH = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/metadata.csv";
+	private static final String CONFIG_FILE_PATH = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/DBApp.config";
+	private static final String TABLES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Tables/";
+	private static final String PAGES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Pages/";
+	private static final String INDICES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Indices/";
 
 	// Helper method to read the metadata file
 	public String readMetadataFile() throws IOException {

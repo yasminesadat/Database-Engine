@@ -30,11 +30,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class DBApp {
-	private static final String METADATA_PATH = "dbms/src/main/resources/metadata.csv";
-	private static final String CONFIG_FILE_PATH = "dbms/src/main/resources/DBApp.config";
-	private static final String TABLES_DIR = "dbms/src/main/resources/Tables/";
-	private static final String PAGES_DIR = "dbms/src/main/resources/Pages/";
-	private static final String INDICES_DIR = "dbms/src/main/resources/Indices/";
+	// generic
+	// private static final String METADATA_PATH =
+	// "dbms/src/main/resources/metadata.csv";
+	// private static final String CONFIG_FILE_PATH =
+	// "dbms/src/main/resources/DBApp.config";
+	// private static final String TABLES_DIR = "dbms/src/main/resources/Tables/";
+	// private static final String PAGES_DIR = "dbms/src/main/resources/Pages/";
+	// private static final String INDICES_DIR = "dbms/src/main/resources/Indices/";
+
+	// for JUNIT tests
+	private static final String METADATA_PATH = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/metadata.csv";
+	private static final String CONFIG_FILE_PATH = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/DBApp.config";
+	private static final String TABLES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Tables/";
+	private static final String PAGES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Pages/";
+	private static final String INDICES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Indices/";
 
 	public DBApp() {
 	}
