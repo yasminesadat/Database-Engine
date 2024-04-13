@@ -603,7 +603,6 @@ public class DBApp {
 			// direct tuple manipulation in all pages
 			Table t = deserializeTable(arrSQLTerms[0]._strTableName);
 			pages.addAll(t.getStrPages());
-			// use lambda expression
 			t = null;
 		}
 		return searchRecordswithinSelectedPages(pages, arrSQLTerms, strarrOperators).iterator();
