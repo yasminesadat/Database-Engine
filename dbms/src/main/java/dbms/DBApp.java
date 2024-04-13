@@ -536,7 +536,7 @@ public class DBApp {
 		if (arrSQLTerms.length == 0 || strarrOperators.length != arrSQLTerms.length - 1) {
 			throw new DBAppException("Invalid input: Term and Operator arrays mismatch");
 		}
-		checkDataTypesForSelect(arrSQLTerms);
+		checkDataForSelect(arrSQLTerms, strarrOperators);
 		Hashtable<String, String> columns = loadAllColumnsHavingIndex(arrSQLTerms[0]._strTableName);
 		Vector<Object> operations = queryOperationsGenerator(arrSQLTerms, strarrOperators, columns);
 		// passed by reference to method
@@ -842,7 +842,7 @@ public class DBApp {
 
 	////////////////////////////////////////// SELECT HELPERS
 	////////////////////////////////////////// //////////////////////////////////////////
-	public void checkDataTypesForSelect(SQLTerm[] arrSQLTerms) throws DBAppException {
+	public void checkDataForSelect(SQLTerm[] arrSQLTerms, String[] strarrOperators) throws DBAppException {
 		String strTableName = arrSQLTerms[0]._strTableName;
 		BufferedReader br = null;
 		String line = "";
@@ -886,9 +886,21 @@ public class DBApp {
 			if (!columnData.containsKey(term._strColumnName)) {
 				throw new DBAppException("CHECK DATA: Column " + term._strColumnName + " doesn't exist in the table");
 			}
-			if (!term._objValue.getClass().getTypeName().toLowerCase().equals(columnData.get(term._strColumnName)))
+			if (!term._objValue.getClass().getTypeName().toLowerCase().equals(columnData.get(term._strColumnName))) {
 				throw new DBAppException("CHECK DATA: You have entered an in compatible "
 						+ term._objValue.getClass().getTypeName().toLowerCase() + " for " + term._strColumnName);
+			}
+			if (!(term._strOperator.equals("!=") || term._strOperator.equals("=") || term._strOperator.equals(">")
+					|| term._strOperator.equals(">=") || term._strOperator.equals("<")
+					|| term._strOperator.equals("<="))) {
+				throw new DBAppException(
+						"CHECK DATA: Invalid operator " + term._strOperator + " for SQL Term provided");
+			}
+		}
+		for (String operator : strarrOperators) {
+			if (!(operator.equals("AND") || operator.equals("OR") || operator.equals("XOR"))) {
+				throw new DBAppException("CHECK DATA: Invalid operator " + operator + " for SQL Term provided");
+			}
 		}
 
 	}
