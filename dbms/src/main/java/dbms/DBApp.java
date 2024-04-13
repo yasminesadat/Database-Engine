@@ -8,6 +8,7 @@ import bPlusTree.bplustree.LeafNode;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Vector;
+import java.util.stream.Collectors;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -548,9 +549,9 @@ public class DBApp {
 		operations.removeIf(element -> element instanceof String);
 		System.out.println("operations" + operations);
 		System.out.println("useIndex:" + useIndex);
+		// as not to contain duplicates
+		HashSet<String> pages = new HashSet<>();
 		if (useIndex) {
-			// as not to contain duplicates
-			HashSet<String> pages = new HashSet<>();
 			for (int i = 0; i < arrSQLTerms.length; i++) {
 				// only case that can be false when it's an AND with possibly multiple ones
 				// after
@@ -595,14 +596,17 @@ public class DBApp {
 
 			}
 			System.out.println("final:" + pages);
-			// find tuples within pages and return iterator
-			System.out.println(searchRecordswithinSelectedPages(pages, arrSQLTerms, strarrOperators));
-			return searchRecordswithinSelectedPages(pages, arrSQLTerms, strarrOperators).iterator();
-
+			// add table name to pages as to have the full path
+			pages = pages.stream().map(s -> arrSQLTerms[0]._strTableName + "_" + s)
+					.collect(Collectors.toCollection(HashSet::new));
 		} else {
-			// insert tuple manipulation - Seif's part
+			// direct tuple manipulation in all pages
+			Table t = deserializeTable(arrSQLTerms[0]._strTableName);
+			pages.addAll(t.getStrPages());
+			// use lambda expression
+			t = null;
 		}
-		return null;
+		return searchRecordswithinSelectedPages(pages, arrSQLTerms, strarrOperators).iterator();
 	}
 
 	//////////////////////////////////// EXTRAS
@@ -982,11 +986,11 @@ public class DBApp {
 
 	}
 
-	public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String> pageNums, SQLTerm[] arrSQLTerms,
+	public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String> pageNames, SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
 		Vector<Tuple> res = new Vector<>();
-		for (String page : pageNums) {
-			Page p = deserializePage(arrSQLTerms[0]._strTableName + "_" + page);
+		for (String page : pageNames) {
+			Page p = deserializePage(page);
 			for (Tuple tuple : p.getRecords()) {
 				// know if each tuple satisfies the sql terms
 				Vector<Boolean> flags = new Vector<>();
@@ -1218,17 +1222,19 @@ public class DBApp {
 	public static void main(String[] args) throws DBAppException {
 		DBApp dbApp = new DBApp();
 		SQLTerm[] arrSQLTerms;
-		arrSQLTerms = new SQLTerm[3];
-		arrSQLTerms[2] = new SQLTerm("Student", "name", "!=", "Dalia Noor");
+		arrSQLTerms = new SQLTerm[4];
+		arrSQLTerms[0] = new SQLTerm("Student", "name", "!=", "Dalia Noor");
 		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">", 0.88);
-		arrSQLTerms[0] = new SQLTerm("Student", "id", "=", 800);
-
-		// arrSQLTerms[3] = new SQLTerm("Student", "gpa", "!=", 1.5);
-		String[] strarrOperators = new String[2];
+		arrSQLTerms[2] = new SQLTerm("Student", "id", "!=", 900);
+		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "Zaky Noor");
+		String[] strarrOperators = new String[3];
+		strarrOperators[0] = "AND";
 		strarrOperators[1] = "AND";
-		strarrOperators[0] = "XOR";
-		// strarrOperators[2] = "AND";
+		strarrOperators[2] = "AND";
 		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+		while (resultSet.hasNext()) {
+			System.out.println(resultSet.next());
+		}
 
 	}
 }

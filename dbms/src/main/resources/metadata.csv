@@ -1,4 +1,4 @@
 Table Name, Column Name, Column Type, ClusteringKey, IndexName,IndexType
-Student, id, java.lang.integer, True, idIndex, B+tree
+Student, id, java.lang.integer, True, null, null
 Student, gpa, java.lang.double, False, gpaIndex, B+tree
 Student, name, java.lang.string, False, nameIndex, B+tree
