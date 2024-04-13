@@ -1522,6 +1522,68 @@ public class bplustree implements Serializable {
 
     }
 
+    public String toString() {
+        String s = "";
+        if (this.root == null) {
+            // handle edge case of null root due to the presence of only one node
+            if (this.firstLeaf != null) {
+                s += "<";
+                for (int j = 0; j < firstLeaf.numPairs; j++) {
+                    if (firstLeaf.dictionary[j] != null) {
+                        s += firstLeaf.dictionary[j].key;
+                        if (j < firstLeaf.numPairs - 1 && firstLeaf.dictionary[j + 1] != null) {
+                            s += ", ";
+                        }
+                    }
+                }
+                s += "> ";
+            } else {
+                return "The B+ tree is empty.";
+            }
+        }
+
+        Queue<Node> queue = new LinkedList<>();
+        queue.add(this.root);
+        while (!queue.isEmpty()) {
+            int levelSize = queue.size();
+            for (int i = 0; i < levelSize; i++) {
+                Node currentNode = queue.poll();
+                if (currentNode instanceof InternalNode) {
+                    InternalNode internalNode = (InternalNode) currentNode;
+                    s += "[";
+                    for (int j = 0; j < internalNode.degree; j++) {
+                        if (internalNode.keys[j] != null) {
+                            s += internalNode.keys[j];
+                            if (j < internalNode.degree - 1 && internalNode.keys[j + 1] != null) {
+                                s += ", ";
+                            }
+                        }
+                    }
+                    s += "] ";
+                    for (Node child : internalNode.childPointers) {
+                        if (child != null) {
+                            queue.add(child);
+                        }
+                    }
+                } else if (currentNode instanceof LeafNode) {
+                    LeafNode leafNode = (LeafNode) currentNode;
+                    s += "<";
+                    for (int j = 0; j < leafNode.numPairs; j++) {
+                        if (leafNode.dictionary[j] != null) {
+                            s += leafNode.dictionary[j].key;
+                            if (j < leafNode.numPairs - 1 && leafNode.dictionary[j + 1] != null) {
+                                s += ", ";
+                            }
+                        }
+                    }
+                    s += "> ";
+                }
+            }
+            s += "\n"; // Move to the next level
+        }
+        return s;
+    }
+
     public static void main(String[] args) {
         // bplustree b = new bplustree(3);
         // b.insert(4, "1");
@@ -1567,29 +1629,30 @@ public class bplustree implements Serializable {
         // b3.printTree();
         // System.out.println(b3.rangeSearchWithLowerBoundInclusive("ahmed0"));
 
-        // bplustree b4 = new bplustree(3);
-        // b4.insert(20, "3");
-        // b4.insert(21, "5");
-        // b4.insert(20, "5");
-        // b4.insert(20, "5");
-        // b4.insert(8, "5");
-        // b4.insert(2, "5");
-        // b4.insert(3, "5");
-        // b4.insert(2, "9");
-        // b4.insert(5, "9");
-        // b4.printTree();
-        // b4.delete(5, "5");
-        // b4.printTree();
+        bplustree b4 = new bplustree(4);
+        b4.insert(20, "3");
+        b4.insert(21, "5");
+        b4.insert(20, "5");
+        b4.insert(20, "5");
+        b4.insert(8, "5");
+        b4.insert(2, "5");
+        b4.insert(3, "5");
+        b4.insert(2, "9");
+        b4.insert(5, "9");
+        b4.printTree();
+        b4.delete(5, "5");
+        b4.insert(5, "9");
+        System.out.println(b4);
         // // assume index on name->find name=seif from hashtable in delete
         // Vector<String> finalPages = b3.search("seif");
         // System.out.println(finalPages);
         // // here loop on all other indices
         // // this age index->find age=20
         // Vector<String> temp = b4.search(20);
-        bplustree t = new bplustree(20);
+        bplustree t = new bplustree(2);
         t.insert(1, "1");
         t.insert(2, "1");
-        t.printTree();
+        System.out.println(t);
         t.delete(1, "1");
         t.printTree();
 
