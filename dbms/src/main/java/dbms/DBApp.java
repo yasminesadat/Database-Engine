@@ -894,7 +894,10 @@ public class DBApp {
 			if (term.isNull()) {
 				throw new DBAppException("CHECK DATA: Null exception for SQL Term provided");
 			}
-
+			if (!term._strTableName.equals(strTableName)) {
+				throw new DBAppException(
+						"CHECK DATA: Can't query more than one table at a time. No joins are supported.");
+			}
 			if (!columnData.containsKey(term._strColumnName)) {
 				throw new DBAppException("CHECK DATA: Column " + term._strColumnName + " doesn't exist in the table");
 			}
