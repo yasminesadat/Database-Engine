@@ -48,7 +48,12 @@ public class Table implements Serializable {
         BufferedReader br = null;
         String line = "";
         try {
-            br = new BufferedReader(new FileReader("dbms/src/main/resources/metadata.csv"));
+            // main
+            // br = new BufferedReader(new
+            // FileReader("dbms/src/main/resources/metadata.csv"));
+            // for JUnit
+            br = new BufferedReader(new FileReader(
+                    "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/metadata.csv"));
 
             while ((line = br.readLine()) != null) {
                 String[] s = line.split(", ");

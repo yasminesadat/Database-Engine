@@ -34,7 +34,11 @@ public class Page implements Serializable {
     public Page(String tableName, int pageNum) {
         try {
             Properties prop = new Properties();
-            Path path = Path.of("dbms/src/main/resources/DBApp.config");
+            // main
+            // Path path = Path.of("dbms/src/main/resources/DBApp.config");
+            // for JUnit
+            Path path = Path.of(
+                    "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/DBApp.config");
 
             BufferedReader reader = Files.newBufferedReader(path);
             prop.load(reader);
