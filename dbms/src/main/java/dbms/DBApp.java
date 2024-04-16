@@ -534,7 +534,7 @@ public class DBApp {
 		Hashtable<String, String> indexedColumns = loadAllColumnsHavingIndex(strTableName);
 
 		// track deleted tuples to delete from indices in the end if applicable
-		Hashtable<Tuple, Object> deletedTuples = new Hashtable<>();
+		Hashtable<Tuple, String> deletedTuples = new Hashtable<>();
 		// case 1: if the hashtable contains a clustering key to delete and it has an
 		// index
 		if (htblColNameValue.get(clusteringKey) != null && indexedColumns.get(clusteringKey) != null) {
@@ -694,14 +694,32 @@ public class DBApp {
 				}
 				// loop through pages
 				// binary search if clusteringKey in hashtable
-				// linearly if no clusteringKey in hashtable
-				if (htblColNameValue.containsKey(clusteringKey)) {
+				// Note: indices may output more than one page for that case since they are not
+				// on the clustering column
+				// linear search if no clusteringKey in hashtable
+				for (String num : pageNum) {
+					Page p = deserializePage(strTableName + "_" + num);
+					if (htblColNameValue.containsKey(clusteringKey)) {
+						int i = p.binarySearch(clusteringKey, htblColNameValue.get(clusteringKey));
+						if (i >= 0) {
 
-				} else {
+						}
 
+					} else {
+
+					}
 				}
 			}
 
+		}
+		// handle index deletions here
+		for (String col : indexedColumns.keySet()) {
+			bplustree b = deserializeIndex(indexedColumns.get(col));
+			// loop through all deleted tuple
+			for (Tuple row : deletedTuples.keySet()) {
+				b.delete(row.getHtblTuple().get(col), deletedTuples.get(row));
+			}
+			serializeIndex(b, indexedColumns.get(col));
 		}
 	}
 
