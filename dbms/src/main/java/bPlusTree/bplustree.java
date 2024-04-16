@@ -85,7 +85,6 @@ public class bplustree implements Serializable {
         // Initialize keys and index variable
         Object[] keys = this.root.keys;
         int i;
-
         // Find next node on path to appropriate leaf node
         for (i = 0; i < this.root.degree - 1; i++) {
             if (compare(key, keys[i]) < 0) {

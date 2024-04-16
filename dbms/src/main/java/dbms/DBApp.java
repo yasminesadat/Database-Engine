@@ -28,23 +28,27 @@ import java.lang.Double;
 import java.lang.String;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class DBApp {
 	// generic
-	// private static final String METADATA_PATH =
-	// "dbms/src/main/resources/metadata.csv";
-	// private static final String CONFIG_FILE_PATH =
-	// "dbms/src/main/resources/DBApp.config";
-	// private static final String TABLES_DIR = "dbms/src/main/resources/Tables/";
-	// private static final String PAGES_DIR = "dbms/src/main/resources/Pages/";
-	// private static final String INDICES_DIR = "dbms/src/main/resources/Indices/";
+	private static final String METADATA_PATH = "dbms/src/main/resources/metadata.csv";
+	private static final String CONFIG_FILE_PATH = "dbms/src/main/resources/DBApp.config";
+	private static final String TABLES_DIR = "dbms/src/main/resources/Tables/";
+	private static final String PAGES_DIR = "dbms/src/main/resources/Pages/";
+	private static final String INDICES_DIR = "dbms/src/main/resources/Indices/";
 
 	// for JUNIT tests
-	private static final String METADATA_PATH = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/metadata.csv";
-	private static final String CONFIG_FILE_PATH = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/DBApp.config";
-	private static final String TABLES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Tables/";
-	private static final String PAGES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Pages/";
-	private static final String INDICES_DIR = "E:/Semester 6/Database 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Indices/";
+	// private static final String METADATA_PATH = "E:/Semester 6/Database
+	// 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/metadata.csv";
+	// private static final String CONFIG_FILE_PATH = "E:/Semester 6/Database
+	// 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/DBApp.config";
+	// private static final String TABLES_DIR = "E:/Semester 6/Database
+	// 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Tables/";
+	// private static final String PAGES_DIR = "E:/Semester 6/Database
+	// 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Pages/";
+	// private static final String INDICES_DIR = "E:/Semester 6/Database
+	// 2/Project/GitHub/DBEngineWithMaven/dbms/src/main/resources/Indices/";
 
 	public DBApp() {
 	}
@@ -255,10 +259,6 @@ public class DBApp {
 	public void insertIntoTable(String strTableName,
 			Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
-		// Check table exists
-		if (!checkTableExists(strTableName))
-			throw new DBAppException("INSERT INTO TABLE: Table doesn't exist");
-
 		// Check datatypes from csv and if clusteringKey is repeated
 		// Returns {strClusteringKey, strClusteringColIndexName}
 		String[] clusteringData = checkDataForInsert(strTableName, htblColNameValue);
@@ -400,9 +400,6 @@ public class DBApp {
 	public void updateTable(String strTableName,
 			String strClusteringKeyValue,
 			Hashtable<String, Object> htblColNameValue) throws DBAppException {
-		if (!checkTableExists(strTableName))
-			throw new DBAppException("UPDATE TABLE: Table doesn't exist");
-
 		// get clustering key and its datatype from csv
 		// get all indices as they might get updated
 		String clusteringKey = "";
@@ -437,7 +434,7 @@ public class DBApp {
 		if (htblColNameValue.containsKey(clusteringKey))
 			throw new DBAppException("UPDATE TABLE: Clustering key's value can't be updated");
 
-		checkDataTypesForUpdate(strTableName, htblColNameValue);
+		dataChecker(strTableName, htblColNameValue);
 
 		// check if clusteringKeyValue can be parsed to its correct datatype if is
 		// double or int
@@ -532,8 +529,180 @@ public class DBApp {
 	public void deleteFromTable(String strTableName,
 			Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
-		throw new DBAppException("");
+		String clusteringKey = dataChecker(strTableName, htblColNameValue);
+		// key: ColName, value: IndexName
+		Hashtable<String, String> indexedColumns = loadAllColumnsHavingIndex(strTableName);
 
+		// track deleted tuples to delete from indices in the end if applicable
+		Hashtable<Tuple, Object> deletedTuples = new Hashtable<>();
+		// case 1: if the hashtable contains a clustering key to delete and it has an
+		// index
+		if (htblColNameValue.get(clusteringKey) != null && indexedColumns.get(clusteringKey) != null) {
+			Hashtable<String, Object> htblvalue = null;
+			bplustree b = deserializeIndex(indexedColumns.get(clusteringKey));
+			Vector<String> v = b.search(htblColNameValue.get(clusteringKey));
+			// value not found in a page
+			if (v == null) {
+				return;
+			}
+			// already know it'll be one value
+			String pageNum = v.get(0);
+			Page p = deserializePage(strTableName + "_" + pageNum);
+			int i = p.binarySearch(clusteringKey, htblColNameValue.get(clusteringKey)); // rowNumber
+
+			// check if it is a valid tuple (all columns are same in hashtable)
+			Tuple tupleValue = p.getRecords().get(i);
+			htblvalue = tupleValue.getHtblTuple();
+			for (String key : htblColNameValue.keySet()) {
+				if (!htblColNameValue.get(key).equals(htblvalue.get(key))) {
+					return;
+				}
+
+			}
+			// deletion logic here
+			// more than one entry in page so at least one remains
+			if (p.getNumOfEntries() > 1) {
+				p.remove(i);
+				serializePage(p);
+			} else {
+				// only this element in the page so we will delete the page
+				Path filePath = Paths.get(PAGES_DIR + p.getPageName() + ".ser");
+				try {
+					Files.delete(filePath);
+				} catch (IOException e) {
+					throw new DBAppException(e.getMessage());
+				}
+				Table t = deserializeTable(strTableName);
+				t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+				serializeTable(t);
+			}
+
+			deletedTuples.put(tupleValue, p.getPageNum());
+
+		}
+		// case 2: see if existing indices can limit the search or are they of no use
+		// like no index case
+		else {
+			Hashtable<String, String> usefulIndices = new Hashtable<>();
+			for (String key : indexedColumns.keySet()) {
+				if (htblColNameValue.containsKey(key)) {
+					usefulIndices.put(key, indexedColumns.get(key));
+				}
+			}
+			// subcase 1: no useful indices same as no index case
+			if (usefulIndices.size() == 0) {
+				// case 1.1: clustering key is in hashtable so use binary search
+				if (htblColNameValue.containsKey(clusteringKey)) {
+					Page p = binarySearchWithoutIndex(strTableName, clusteringKey,
+							htblColNameValue.get(clusteringKey));
+					if (p == null)
+						return;
+					int i = p.binarySearch(clusteringKey, htblColNameValue.get(clusteringKey));
+					if (i < 0)
+						return;
+					Tuple row = p.getRecords().get(i);
+					Hashtable<String, Object> htblvalue = row.getHtblTuple();
+					// validate row
+					for (String key : htblColNameValue.keySet()) {
+						if (!htblColNameValue.get(key).equals(htblvalue.get(key))) {
+							return;
+						}
+					}
+					// deletion logic here
+					// more than one entry in page so at least one remains
+					if (p.getNumOfEntries() > 1) {
+						p.remove(i);
+						serializePage(p);
+					}
+
+					else {
+						// only this element in the page so we will delete the page
+						Path filePath = Paths.get(PAGES_DIR + p.getPageName() + ".ser");
+						try {
+							Files.delete(filePath);
+						} catch (IOException e) {
+							throw new DBAppException(e.getMessage());
+						}
+						Table t = deserializeTable(strTableName);
+						t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+						serializeTable(t);
+					}
+					deletedTuples.put(row, p.getPageNum());
+
+				}
+				// case 1.2: clustering key is not in hashtable
+				// can have one or more values so search linearly
+				else {
+					Table t = deserializeTable(strTableName);
+					for (String pageName : t.getStrPages()) {
+						Page p = deserializePage(pageName);
+						Vector<Tuple> records = p.getRecords();
+						for (int i = 0; i < records.size(); i++) {
+							Hashtable<String, Object> htblvalue = records.get(i).getHtblTuple();
+							boolean matching = true;
+							for (String key : htblColNameValue.keySet()) {
+								if (!htblColNameValue.get(key).equals(htblvalue.get(key))) {
+									matching = false;
+									break;
+								}
+							}
+							if (matching) {
+								deletedTuples.put(records.get(i), p.getPageNum());
+								// deletion logic here
+								// more than one entry in page so at least one remains
+								if (p.getNumOfEntries() > 1) {
+									p.remove(i);
+								}
+
+								else {
+									// only this element in the page so we will delete the page
+									Path filePath = Paths.get(PAGES_DIR + p.getPageName() + ".ser");
+									try {
+										Files.delete(filePath);
+									} catch (IOException e) {
+										throw new DBAppException(e.getMessage());
+									}
+									t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+								}
+							}
+						}
+						serializePage(p);
+					}
+					serializeTable(t);
+
+				}
+			} else {
+				// subcase 2: one or more useful indices
+				HashSet<String> pageNum = new HashSet<>();
+				boolean first = true;
+				for (String key : usefulIndices.keySet()) {
+					bplustree tempIndex = deserializeIndex(usefulIndices.get(key));
+					Object value = htblColNameValue.get(key);
+
+					Vector<String> tempPages = tempIndex.search(value);
+					// terms are ANDED so if one doesn't exist, no matching tuple exists
+					if (tempPages.isEmpty()) {
+						return;
+					}
+					if (first) {
+						pageNum.addAll(tempPages);
+						first = false;
+					} else {
+						pageNum.retainAll(tempPages);
+					}
+
+				}
+				// loop through pages
+				// binary search if clusteringKey in hashtable
+				// linearly if no clusteringKey in hashtable
+				if (htblColNameValue.containsKey(clusteringKey)) {
+
+				} else {
+
+				}
+			}
+
+		}
 	}
 
 	// _strOperator can be >, >=, <, <=, != or = (6 operators)
@@ -728,13 +897,6 @@ public class DBApp {
 
 	}
 
-	// public boolean checkTableExists(String strTableName) {
-	// if (Files.exists(Paths.get("Tables/" + strTableName + ".ser"))) {
-	// return true;
-	// }
-	// return false;
-	// }
-
 	// returns the index for clusteringKey (its name or null)
 	public String[] checkDataForInsert(String strTableName, Hashtable<String, Object> htblColNameValue)
 			throws DBAppException {
@@ -782,6 +944,9 @@ public class DBApp {
 
 			}
 			br.close();
+			if (!foundTable) {
+				throw new DBAppException("CHECK DATA: Table doesn't exist");
+			}
 			if (htblColNameValue.size() != countColumns)
 				throw new DBAppException(
 						"CHECK DATATYPES: You entered more column fields that don't exist in the table");
@@ -804,7 +969,9 @@ public class DBApp {
 		return new String[] { clusteringKey, clusteringKeyIndex };
 	}
 
-	public void checkDataTypesForUpdate(String strTableName, Hashtable<String, Object> htblColNameValue)
+	// used in update and delete
+	// returns clusteringKey
+	public String dataChecker(String strTableName, Hashtable<String, Object> htblColNameValue)
 			throws DBAppException {
 		BufferedReader br = null;
 		String line = "";
@@ -813,11 +980,17 @@ public class DBApp {
 									// have been all checked
 		int countColumns = 0; // to make sure that the hashtable contains exactly the number of fields
 								// that have been checked
+		String clusteringKey = "";
 		try {
 			br = new BufferedReader(new FileReader(METADATA_PATH));
 
 			while ((line = br.readLine()) != null) {
 				String[] s = line.split(", ");
+
+				// first row with clusteringColumn info
+				if (s[0].equals(strTableName) && !foundTable) {
+					clusteringKey = s[1];
+				}
 
 				if (foundTable && !strTableName.equals(s[0])) {
 					break;
@@ -833,7 +1006,7 @@ public class DBApp {
 						if (!(htblColNameValue.get(s[1]).getClass().getTypeName().toLowerCase()).equals(s[2])) {
 							br.close();
 							throw new DBAppException(
-									"CHECK DATATYPES: Invalid datatype for " + s[1] + ". You have entered "
+									"CHECK DATA: Invalid datatype for " + s[1] + ". You have entered "
 											+ htblColNameValue.get(s[1]).getClass().getTypeName());
 						} else {
 							countColumns++;
@@ -843,12 +1016,16 @@ public class DBApp {
 
 			}
 			br.close();
+			if (!foundTable) {
+				throw new DBAppException("CHECK DATA: Table doesn't exist");
+			}
 			if (htblColNameValue.size() != countColumns)
 				throw new DBAppException(
-						"CHECK DATATYPES: You entered more column fields that don't exist in the table");
+						"CHECK DATA: You entered more column fields that don't exist in the table");
 		} catch (IOException e) {
 			throw new DBAppException(e.getMessage());
 		}
+		return clusteringKey;
 
 	}
 
