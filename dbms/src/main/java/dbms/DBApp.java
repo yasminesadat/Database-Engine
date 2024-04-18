@@ -535,9 +535,32 @@ public class DBApp {
 
 		// track deleted tuples to delete from indices in the end if applicable
 		Hashtable<Tuple, String> deletedTuples = new Hashtable<>();
+
+		// case # Special : if hashtable is empty empty all records from table
+		if (htblColNameValue.size() == 0) {
+			Table t = deserializeTable(strTableName);
+			Vector<String> strpages = t.getStrPages();
+			for (String strpage : strpages) {
+				Page p = deserializePage(strpage);
+				Vector<Tuple> tuples = p.getRecords();
+				for (Tuple tupleValue : tuples) {
+					deletedTuples.put(tupleValue, p.getPageNum());
+				}
+				Path filePath = Paths.get(PAGES_DIR + p.getPageName() + ".ser");
+				try {
+					Files.delete(filePath);
+				} catch (IOException e) {
+					throw new DBAppException(e.getMessage());
+				}
+
+				t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+
+			}
+			serializeTable(t);
+		}
 		// case 1: if the hashtable contains a clustering key to delete and it has an
 		// index
-		if (htblColNameValue.get(clusteringKey) != null && indexedColumns.get(clusteringKey) != null) {
+		else if (htblColNameValue.get(clusteringKey) != null && indexedColumns.get(clusteringKey) != null) {
 			Hashtable<String, Object> htblvalue = null;
 			bplustree b = deserializeIndex(indexedColumns.get(clusteringKey));
 			Vector<String> v = b.search(htblColNameValue.get(clusteringKey));
@@ -692,23 +715,107 @@ public class DBApp {
 					}
 
 				}
+				// check if the pageNum is not empty else return
+				if (pageNum.isEmpty()) {
+					return;
+				}
 				// loop through pages
-				// binary search if clusteringKey in hashtable
-				// Note: indices may output more than one page for that case since they are not
-				// on the clustering column
-				// linear search if no clusteringKey in hashtable
-				for (String num : pageNum) {
-					Page p = deserializePage(strTableName + "_" + num);
-					if (htblColNameValue.containsKey(clusteringKey)) {
+
+				// case 2.1: binary search if clusteringKey in hashtable
+				if (htblColNameValue.get(clusteringKey) != null) {
+
+					for (String pageno : pageNum) {
+
+						// get pagename from page no
+						Page p = deserializePage(strTableName + "_" + pageno);
+						if (p == null)
+							return;
 						int i = p.binarySearch(clusteringKey, htblColNameValue.get(clusteringKey));
-						if (i >= 0) {
-
+						// if not found skip to the next page
+						if (i < 0) {
+							continue;
 						}
+						Tuple row = p.getRecords().get(i);
+						Hashtable<String, Object> htblvalue = row.getHtblTuple();
+						// validate row
+						boolean match = true;
+						for (String key : htblColNameValue.keySet()) {
+							if (!htblColNameValue.get(key).equals(htblvalue.get(key))) {
+								match = false;
+								break;
+							}
+						}
+						if (match) {
+							// deletion logic here
+							// more than one entry in page so at least one remains
+							if (p.getNumOfEntries() > 1) {
+								p.remove(i);
+								serializePage(p);
+							}
 
-					} else {
+							else {
+								// only this element in the page so we will delete the page
+								Path filePath = Paths.get(PAGES_DIR + p.getPageName() + ".ser");
+								try {
+									Files.delete(filePath);
+								} catch (IOException e) {
+									throw new DBAppException(e.getMessage());
+								}
+								Table t = deserializeTable(strTableName);
+								t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+								serializeTable(t);
+							}
+							deletedTuples.put(row, p.getPageNum());
+							// if found the record so i broke from the loop
+							break;
+						}
+					}
+				} else {
+					// Note: indices may output more than one page for that case since they are not
+					// on the clustering column
+					// linear search if no clusteringKey in hashtable
+					Table t = deserializeTable(strTableName);
+					for (String num : pageNum) {
+						Page p = deserializePage(strTableName + "_" + num);
+						Vector<Tuple> records = p.getRecords();
+						for (int i = 0; i < records.size(); i++) {
+							Hashtable<String, Object> htblvalue = records.get(i).getHtblTuple();
+							boolean matching = true;
+							for (String key : htblColNameValue.keySet()) {
+								if (!htblColNameValue.get(key).equals(htblvalue.get(key))) {
+									matching = false;
+									break;
+								}
+							}
+							if (matching) {
+								deletedTuples.put(records.get(i), p.getPageNum());
+								// deletion logic here
+								// more than one entry in page so at least one remains
+								if (p.getNumOfEntries() > 1) {
+									p.remove(i);
+
+								}
+
+								else {
+									// only this element in the page so we will delete the page
+									Path filePath = Paths.get(PAGES_DIR + p.getPageName() + ".ser");
+									try {
+										Files.delete(filePath);
+									} catch (IOException e) {
+										throw new DBAppException(e.getMessage());
+									}
+
+									t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+								}
+							}
+						}
+						serializePage(p);
 
 					}
+					serializeTable(t);
+
 				}
+
 			}
 
 		}
