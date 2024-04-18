@@ -1171,6 +1171,27 @@ public class DBApp {
 
 	}
 
+	// when no index is used, clusteringKey can limit the search if all terms are
+	// ANDED or query doesn't have other columns except it
+	// != operator excludes one tuple so is of no use
+	// pass result to queryOptimizer
+	public Vector<Object> keepTrackofClusteringKeyValue(SQLTerm[] arrSQLTerms, String[] strarrOperators,
+			String strClusteringKey) {
+		int i = 0;
+		Vector<Object> operations = new Vector<>();
+		for (SQLTerm term : arrSQLTerms) {
+			if (term._strColumnName.equals(strClusteringKey) && !term._strOperator.equals("!=")) {
+				operations.add(true);
+			} else {
+				operations.add(false);
+			}
+			if (i < strarrOperators.length)
+				operations.add(strarrOperators[i++]);
+		}
+		System.out.println("equation: " + operations);
+		return operations;
+	}
+
 	public HashSet<String> executeindexedSQlterm(bplustree indextree, SQLTerm sql) {
 		String operator = sql._strOperator;
 
@@ -1436,12 +1457,14 @@ public class DBApp {
 		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
 		String[] strarrOperators = new String[3];
 		strarrOperators[0] = "AND";
-		strarrOperators[1] = "XOR";
+		strarrOperators[1] = "AND";
 		strarrOperators[2] = "OR";
-		Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
-		while (resultSet.hasNext()) {
-			System.out.println(resultSet.next());
-		}
+		// Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+		// while (resultSet.hasNext()) {
+		// System.out.println(resultSet.next());
+		// }
+		Vector<Object> v = dbApp.keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, "name");
+		System.out.println(dbApp.queryOptimizer(v));
 
 	}
 }
