@@ -1321,9 +1321,145 @@ public class DBApp {
 
 	}
 
+
+
 	public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String> pageNames, SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
+
+		//save result records in this vector
 		Vector<Tuple> res = new Vector<>();
+		//deserialize the table to get the strclustering key
+		String strTableName=arrSQLTerms[0]._strTableName;
+		Table t= deserializeTable(strTableName);
+		String strClusteringKey=t.getStrClusteringKeyColumn();
+		
+
+		Vector<Object> v=keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, strClusteringKey);
+		//check whether the clustering key is included in the select query
+		Boolean flag=queryOptimizer(v);
+		if(flag){
+			// check whether the clustering key is included with operator equal (to binary search across the pages)
+			boolean checkEqualOperator=false;
+			Object clusteringvalueForEqual="";
+			SQLTerm termforequal=null;
+			SQLTerm termforRange=null;
+			for(SQLTerm term:arrSQLTerms){
+				if(term._strColumnName.equals(strClusteringKey) && term._strOperator.equals("=")){
+					checkEqualOperator=true;
+					termforequal=term;
+					
+					
+				}
+				else if(term._strColumnName.equals(strClusteringKey) && !term._strOperator.equals("!=")){
+					termforRange=term;
+				}
+			}
+			clusteringvalueForEqual=termforequal._objValue;
+			if(checkEqualOperator){
+				//binary search to get the clustering record
+				Page p=binarySearchWithoutIndex(strTableName, strClusteringKey, clusteringvalueForEqual);
+				int index=p.binarySearch(strClusteringKey, clusteringvalueForEqual);
+				Tuple tuple=p.getRecords().get(index);
+
+
+				//check for other sql terms
+				Vector<Boolean> flags = new Vector<>();
+				for (SQLTerm sqlTerm : arrSQLTerms) {
+					flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
+				}
+				// process sequentially all operators
+				for (int j = 0; j < strarrOperators.length; j++) {
+					if (strarrOperators[j].equals("AND")) {
+						Boolean resultAND = flags.get(0) && flags.get(1);
+						flags.remove(0);
+						flags.remove(0);
+						flags.add(0, resultAND);
+
+					} else if (strarrOperators[j].equals("OR")) {
+						Boolean resultOR = flags.get(0) || flags.get(1);
+						flags.remove(0);
+						flags.remove(0);
+						flags.add(0, resultOR);
+
+					} else {
+						Boolean resultXOR = flags.get(0) ^ flags.get(1);
+						flags.remove(0);
+						flags.remove(0);
+						flags.add(0, resultXOR);
+					}
+				}
+				if (flags.get(0)) {
+					res.add(tuple);
+				}
+
+				
+			}
+			else{
+				//check whether the record is in the page by checking the first and last value
+				String operator=termforRange._strOperator;
+
+				for(String page:pageNames){
+					Page p=deserializePage(page);
+					if(operator.equals(">")||operator.equals(">=")){
+						//if the last value doesnt satisfy the sql term with clustering key so skip for the next page 
+						if(!tupleSatisfiesSQLTerm(p.getLastValue(),termforRange)){
+							continue;
+						}
+					}
+					else if(operator.equals("<")||operator.equals("<=") ){
+
+						//if the first value doesnt satisfy the sql term with clustering key then next pages wont satisfy so break
+						if(!tupleSatisfiesSQLTerm(p.getLastValue(),termforRange)){
+							break;
+						}
+
+					}
+					else{
+						//loop through the records to chech for satisfied tuples
+
+						for (Tuple tuple : p.getRecords()) {
+							// know if each tuple satisfies the sql terms
+							Vector<Boolean> flags = new Vector<>();
+							for (SQLTerm sqlTerm : arrSQLTerms) {
+								flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
+							}
+							// process sequentially all operators
+							for (int j = 0; j < strarrOperators.length; j++) {
+								if (strarrOperators[j].equals("AND")) {
+									Boolean resultAND = flags.get(0) && flags.get(1);
+									flags.remove(0);
+									flags.remove(0);
+									flags.add(0, resultAND);
+			
+								} else if (strarrOperators[j].equals("OR")) {
+									Boolean resultOR = flags.get(0) || flags.get(1);
+									flags.remove(0);
+									flags.remove(0);
+									flags.add(0, resultOR);
+			
+								} else {
+									Boolean resultXOR = flags.get(0) ^ flags.get(1);
+									flags.remove(0);
+									flags.remove(0);
+									flags.add(0, resultXOR);
+								}
+							}
+							if (flags.get(0)) {
+								res.add(tuple);
+							}
+						}
+					}
+					
+					
+				}
+
+			}
+			
+		}
+
+		else{
+			//there are no sql terms with clustering key to help with select so loop through all pages linearly
+		
 		for (String page : pageNames) {
 			Page p = deserializePage(page);
 			for (Tuple tuple : p.getRecords()) {
@@ -1358,7 +1494,10 @@ public class DBApp {
 				}
 			}
 		}
+	}
 		return res;
+	
+
 	}
 
 	public Boolean tupleSatisfiesSQLTerm(Tuple tuple, SQLTerm sqlTerm) {
@@ -1559,8 +1698,8 @@ public class DBApp {
 		SQLTerm[] arrSQLTerms;
 		arrSQLTerms = new SQLTerm[4];
 		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
-		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.0);
-		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "=", 100.0);
+		arrSQLTerms[1] = new SQLTerm("Student", "id", "<", 50);
+		arrSQLTerms[2] = new SQLTerm("Student", "id", "=", 100);
 		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
 		String[] strarrOperators = new String[3];
 		strarrOperators[0] = "AND";
