@@ -706,6 +706,7 @@ public class DBApp {
 								// more than one entry in page so at least one remains
 								if (p.getNumOfEntries() > 1) {
 									p.remove(i);
+									serializePage(p);
 									i--;
 								}
 
@@ -728,7 +729,6 @@ public class DBApp {
 								}
 							}
 						}
-						serializePage(p);
 					}
 					serializeTable(t);
 
@@ -837,13 +837,14 @@ public class DBApp {
 									break;
 								}
 							}
-							System.out.println("tuple:" + records.get(i) + "matching: " + matching);
+							// System.out.println("tuple:" + records.get(i) + "matching: " + matching);
 							if (matching) {
 								deletedTuples.put(records.get(i), p.getPageNum());
 								// deletion logic here
 								// more than one entry in page so at least one remains
 								if (p.getNumOfEntries() > 1) {
 									p.remove(i);
+									serializePage(p);
 									i--;
 
 								}
@@ -868,7 +869,6 @@ public class DBApp {
 								}
 							}
 						}
-						serializePage(p);
 
 					}
 					serializeTable(t);
