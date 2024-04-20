@@ -17,11 +17,12 @@ public class Table implements Serializable {
             String page = strPages.get(i);
             String[] s = page.split("_");
             if (s[1].equals(pageNum + "")) {
+                // when next page exists in vector
                 if (i + 1 < strPages.size()) {
                     String res = strPages.get(i + 1);
                     return Integer.parseInt(res.charAt(res.length() - 1) + "");
                 } else
-                    return i + 1;
+                    return pageNum + 1;
             }
         }
         return -1;

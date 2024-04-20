@@ -342,7 +342,6 @@ public class DBApp {
 				// Calculate the next page number
 				int nextPageNum = t.getNextPageNum(Integer.parseInt(displacedTuplePageNum));
 				Page nextPage;
-
 				// Check if the next page exists, if not create it
 				if (t.checkPageExists(strTableName + "_" + nextPageNum)) {
 					nextPage = deserializePage(strTableName + "_" + nextPageNum);
@@ -361,7 +360,7 @@ public class DBApp {
 				// Prepare for the next iteration if there was a displacement
 				displacedTuple = nextDisplacedTuple;
 				displacedTuplePageNum = String.valueOf(nextPageNum);
-
+				System.out.println("nextPage to be serialized: " + nextPage.getPageName());
 				// Serialize the updated page
 				serializePage(nextPage);
 
