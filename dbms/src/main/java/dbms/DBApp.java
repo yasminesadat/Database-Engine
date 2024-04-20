@@ -4,9 +4,15 @@ package dbms;
 // import antlr.SQLLexer;
 // import antlr.SQLParser;
 // import antlr.myVisitor;
+import antlr.SQLLexer;
+import antlr.SQLParser;
+import antlr.myVisitor;
 import bPlusTree.bplustree;
 import bPlusTree.bplustree.DictionaryPair;
 import bPlusTree.bplustree.LeafNode;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
 // import org.antlr.v4.runtime.CharStream;
 // import org.antlr.v4.runtime.CommonTokenStream;
 // import org.antlr.v4.runtime.tree.ParseTree;
@@ -32,15 +38,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.antlr.v4.runtime.CharStreams.fromFileName;
+
 //import static org.antlr.v4.runtime.CharStreams.fromFileName;
 
 public class DBApp {
 	// generic
-	private static final String METADATA_PATH = "dbms/src/main/resources/metadata.csv";
-	private static final String CONFIG_FILE_PATH = "dbms/src/main/resources/DBApp.config";
-	private static final String TABLES_DIR = "dbms/src/main/resources/Tables/";
-	private static final String PAGES_DIR = "dbms/src/main/resources/Pages/";
-	private static final String INDICES_DIR = "dbms/src/main/resources/Indices/";
+	private static final String METADATA_PATH = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\metadata.csv";
+	private static final String CONFIG_FILE_PATH = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\DBApp.config";
+	private static final String TABLES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Tables\\";
+	private static final String PAGES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Pages\\";
+	private static final String INDICES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Indices\\";
 
 	// for JUNIT tests
 	// private static final String METADATA_PATH = "E:/Semester 6/Database
@@ -2479,41 +2487,41 @@ public class DBApp {
 
 	// below method returns Iterator with result set if passed
 	// strbufSQL is a select, otherwise returns null.
-	// public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
-	// String source =
-	// "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\java\\antlr\\test.txt";
-	// BufferedWriter writer = null;
-	// try {
-	// writer = new BufferedWriter(new FileWriter(source, false));
-	// } catch (IOException e) {
-	// throw new DBAppException(e.getMessage());
-	// }
-	// try {
-	// writer.write(strbufSQL.toString());
-	// } catch (IOException e) {
-	// throw new DBAppException(e.getMessage());
-	// }
-	// try {
-	// writer.close();
-	// } catch (IOException e) {
-	// throw new DBAppException(e.getMessage());
-	// }
-	// CharStream cs = null;
-	// try {
-	// cs = fromFileName(source);
-	// } catch (IOException e) {
-	// throw new DBAppException(e.getMessage());
-	// }
-	// antlr.SQLLexer lexer = new SQLLexer(cs);
-	// CommonTokenStream token = new CommonTokenStream(lexer);
-	// SQLParser parser = new SQLParser(token);
-	// ParseTree tree = parser.parse();
+	 public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
+	 String source =
+	 "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\java\\antlr\\test.txt";
+	 BufferedWriter writer = null;
+	 try {
+	 writer = new BufferedWriter(new FileWriter(source, false));
+	 } catch (IOException e) {
+	 throw new DBAppException(e.getMessage());
+	 }
+	 try {
+	 writer.write(strbufSQL.toString());
+	 } catch (IOException e) {
+	 throw new DBAppException(e.getMessage());
+	 }
+	 try {
+	 writer.close();
+	 } catch (IOException e) {
+	 throw new DBAppException(e.getMessage());
+	 }
+	 CharStream cs = null;
+	 try {
+	 cs = fromFileName(source);
+	 } catch (IOException e) {
+	 throw new DBAppException(e.getMessage());
+	 }
+	 antlr.SQLLexer lexer = new SQLLexer(cs);
+	 CommonTokenStream token = new CommonTokenStream(lexer);
+	 SQLParser parser = new SQLParser(token);
+	 ParseTree tree = parser.parse();
 
-	// myVisitor visitor = new myVisitor();
-	// visitor.visit(tree);
+	 myVisitor visitor = new myVisitor();
+	 visitor.visit(tree);
 
-	// return visitor.getResultIterator();
-	// }
+	 return visitor.getResultIterator();
+	 }
 
 	/////////////////////////////////////////// END
 	/////////////////////////////////////////// //////////////////////////////////////////////////////////
@@ -2521,23 +2529,46 @@ public class DBApp {
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
 
-		String strTableName = "Student";
 		DBApp dbApp = new DBApp();
-		Hashtable htblColNameType = new Hashtable();
-		htblColNameType.put("id", "java.lang.Integer");
-		htblColNameType.put("name", "java.lang.String");
-		htblColNameType.put("gpa", "java.lang.double");
-		dbApp.createTable(strTableName, "id", htblColNameType);
-		dbApp.createIndex(strTableName, "gpa", "gpaINDEX");
-		dbApp.createIndex(strTableName, "id", "idINDEX");
-		String[] names = { "john", "ahmed", "mohamed", "zoz" };
-		for (int i = 0; i < 20; i++) {
 
-			Hashtable htblColNameValue = new Hashtable();
-			htblColNameValue.put("id", i);
-			htblColNameValue.put("name", names[i % 4]);
-			htblColNameValue.put("gpa", Math.abs(new Double(i) - 0.5));
-			dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+		//SQL QUERY FORMAT
+		//CREATE TABLE "Student" ( "id" INT PRIMARY KEY,"gpa" DOUBLE,"name" STRING);
+		//CREATE INDEX "nameIndex" ON "Students" ("name");
+		//INSERT INTO "Students" ("name","id","gpa") VALUES ("Hi",3,4.5);
+		//UPDATE "Student" SET "name"="John","age"=2,"gpa"=2.34 WHERE "id"=5;
+		//DELETE FROM "Student" WHERE "name"="Ahmed" AND "id=3" AND "gpa"=1.2;
+		//SELECT * FROM "Student" WHERE "name"="Ahmed" AND "age">10 OR "gpa"<3;
+
+
+
+		//EXECUTE THE QUERY
+		Scanner sc=new Scanner(System.in);
+		String sbTest=sc.nextLine();
+		Iterator<Tuple> result = dbApp.parseSQL(new StringBuffer(sbTest));
+
+
+
+
+
+
+//		String strTableName = "Student";
+//		DBApp dbApp = new DBApp();
+//		Hashtable htblColNameType = new Hashtable();
+//		htblColNameType.put("id", "java.lang.Integer");
+//		htblColNameType.put("name", "java.lang.String");
+//		htblColNameType.put("gpa", "java.lang.double");
+//		dbApp.createTable(strTableName, "id", htblColNameType);
+//		dbApp.createIndex(strTableName, "gpa", "gpaINDEX");
+//		dbApp.createIndex(strTableName, "id", "idINDEX");
+//		String[] names = { "john", "ahmed", "mohamed", "zoz" };
+//		for (int i = 0; i < 20; i++) {
+//
+//			Hashtable htblColNameValue = new Hashtable();
+//			htblColNameValue.put("id", i);
+//			htblColNameValue.put("name", names[i % 4]);
+//			htblColNameValue.put("gpa", Math.abs(new Double(i) - 0.5));
+//			dbApp.insertIntoTable(strTableName, htblColNameValue);
 		}
 		// SQLTerm[] sqlTerms = new SQLTerm[4];
 		// sqlTerms[0] = new SQLTerm(strTableName, "name", "=", "john");
@@ -2548,9 +2579,9 @@ public class DBApp {
 
 		// dbApp.deleteFromTable("Student", new Hashtable<>());
 
-		System.out.println("BREAK");
-		System.out.println(dbApp.deserializeIndex("idINDEX"));
-		System.out.println(dbApp.deserializeIndex("gpaINDEX"));
+//		System.out.println("BREAK");
+//		System.out.println(dbApp.deserializeIndex("idINDEX"));
+//		System.out.println(dbApp.deserializeIndex("gpaINDEX"));
 
 	}
-}
+

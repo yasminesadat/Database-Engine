@@ -2,3 +2,8 @@ students, id, java.lang.integer, True, idIndex, B+tree
 students, gpa, java.lang.double, False, studentsGpaIndex, B+tree
 students, age, java.lang.integer, False, null, null
 students, name, java.lang.string, False, null, null
+Student, id, java.lang.integer, True, idINDEX, B+tree
+Student, gpa, java.lang.double, False, gpaINDEX, B+tree
+Student, name, java.lang.string, False, null, null
+Buildings, id, java.lang.integer, True, iddIndex, B+tree
+Buildings, gpa, java.lang.double, False, null, null
