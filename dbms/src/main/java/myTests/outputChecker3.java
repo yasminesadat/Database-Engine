@@ -10,7 +10,6 @@ public class outputChecker3 {
         System.out.println(dbApp.deserializePage("Student_1"));
         System.out.println("second page");
         System.out.println(dbApp.deserializePage("Student_2"));
-        System.out.println("third page");
-        System.out.println(dbApp.deserializePage("Student_3"));
+
     }
 }

@@ -599,6 +599,7 @@ public class DBApp {
 			// more than one entry in page so at least one remains
 			if (p.getNumOfEntries() > 1) {
 				p.remove(i);
+				i--;
 				serializePage(p);
 			} else {
 				// only this element in the page so we will delete the page
@@ -657,6 +658,7 @@ public class DBApp {
 					// more than one entry in page so at least one remains
 					if (p.getNumOfEntries() > 1) {
 						p.remove(i);
+						i--;
 						serializePage(p);
 					}
 
@@ -704,6 +706,7 @@ public class DBApp {
 								// more than one entry in page so at least one remains
 								if (p.getNumOfEntries() > 1) {
 									p.remove(i);
+									i--;
 								}
 
 								else {
@@ -732,6 +735,7 @@ public class DBApp {
 				}
 			} else {
 				// subcase 2: one or more useful indices
+				System.out.println("ONE OR MORE USEFUL");
 				HashSet<String> pageNum = new HashSet<>();
 				boolean first = true;
 				for (String key : usefulIndices.keySet()) {
@@ -785,6 +789,7 @@ public class DBApp {
 							// more than one entry in page so at least one remains
 							if (p.getNumOfEntries() > 1) {
 								p.remove(i);
+								i--;
 								serializePage(p);
 							}
 
@@ -817,10 +822,12 @@ public class DBApp {
 					// Note: indices may output more than one page for that case since they are not
 					// on the clustering column
 					// linear search if no clusteringKey in hashtable
+					// System.out.println("searchh linearr after key");
 					Table t = deserializeTable(strTableName);
 					for (String num : pageNum) {
 						Page p = deserializePage(strTableName + "_" + num);
 						Vector<Tuple> records = p.getRecords();
+						System.out.println(records.size());
 						for (int i = 0; i < records.size(); i++) {
 							Hashtable<String, Object> htblvalue = records.get(i).getHtblTuple();
 							boolean matching = true;
@@ -830,12 +837,14 @@ public class DBApp {
 									break;
 								}
 							}
+							System.out.println("tuple:" + records.get(i) + "matching: " + matching);
 							if (matching) {
 								deletedTuples.put(records.get(i), p.getPageNum());
 								// deletion logic here
 								// more than one entry in page so at least one remains
 								if (p.getNumOfEntries() > 1) {
 									p.remove(i);
+									i--;
 
 								}
 
@@ -869,6 +878,7 @@ public class DBApp {
 			}
 
 		}
+		System.out.println(deletedTuples);
 		// handle index deletions here
 		for (String col : indexedColumns.keySet()) {
 			bplustree b = deserializeIndex(indexedColumns.get(col));
@@ -2520,37 +2530,6 @@ public class DBApp {
 
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
-
-		String strTableName = "Student";
-		DBApp dbApp = new DBApp();
-		Hashtable htblColNameType = new Hashtable();
-		htblColNameType.put("id", "java.lang.Integer");
-		htblColNameType.put("name", "java.lang.String");
-		htblColNameType.put("gpa", "java.lang.double");
-		dbApp.createTable(strTableName, "id", htblColNameType);
-		dbApp.createIndex(strTableName, "gpa", "gpaINDEX");
-		dbApp.createIndex(strTableName, "id", "idINDEX");
-		String[] names = { "john", "ahmed", "mohamed", "zoz" };
-		for (int i = 0; i < 20; i++) {
-
-			Hashtable htblColNameValue = new Hashtable();
-			htblColNameValue.put("id", i);
-			htblColNameValue.put("name", names[i % 4]);
-			htblColNameValue.put("gpa", Math.abs(new Double(i) - 0.5));
-			dbApp.insertIntoTable(strTableName, htblColNameValue);
-		}
-		// SQLTerm[] sqlTerms = new SQLTerm[4];
-		// sqlTerms[0] = new SQLTerm(strTableName, "name", "=", "john");
-		// sqlTerms[2] = new SQLTerm(strTableName, "id", ">", 0);
-		// sqlTerms[1] = new SQLTerm(strTableName, "gpa", "=", 4.5);
-		// sqlTerms[3] = new SQLTerm(strTableName, "gpa", ">=", 11.0);
-		// String[] strOperators = { "XOR", "OR", "AND" };
-
-		// dbApp.deleteFromTable("Student", new Hashtable<>());
-
-		System.out.println("BREAK");
-		System.out.println(dbApp.deserializeIndex("idINDEX"));
-		System.out.println(dbApp.deserializeIndex("gpaINDEX"));
 
 	}
 }
