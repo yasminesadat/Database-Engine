@@ -1332,46 +1332,6 @@ public class DBApp {
 
 	}
 
-	// public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String>
-	// pageNames, SQLTerm[] arrSQLTerms,
-	// String[] strarrOperators) throws DBAppException {
-	// Vector<Tuple> res = new Vector<>();
-	// for (String page : pageNames) {
-	// Page p = deserializePage(page);
-	// for (Tuple tuple : p.getRecords()) {
-	// // know if each tuple satisfies the sql terms
-	// Vector<Boolean> flags = new Vector<>();
-	// for (SQLTerm sqlTerm : arrSQLTerms) {
-	// flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
-	// }
-	// // process sequentially all operators
-	// for (int j = 0; j < strarrOperators.length; j++) {
-	// if (strarrOperators[j].equals("AND")) {
-	// Boolean resultAND = flags.get(0) && flags.get(1);
-	// flags.remove(0);
-	// flags.remove(0);
-	// flags.add(0, resultAND);
-
-	// } else if (strarrOperators[j].equals("OR")) {
-	// Boolean resultOR = flags.get(0) || flags.get(1);
-	// flags.remove(0);
-	// flags.remove(0);
-	// flags.add(0, resultOR);
-
-	// } else {
-	// Boolean resultXOR = flags.get(0) ^ flags.get(1);
-	// flags.remove(0);
-	// flags.remove(0);
-	// flags.add(0, resultXOR);
-	// }
-	// }
-	// if (flags.get(0)) {
-	// res.add(tuple);
-	// }
-	// }
-	// }
-	// return res;
-	// }
 	public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String> pageNames, SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
 
@@ -1401,20 +1361,11 @@ public class DBApp {
 					termforRange = term;
 				}
 			}
-
+			clusteringvalueForEqual = termforequal._objValue;
 			if (checkEqualOperator) {
-				clusteringvalueForEqual = termforequal._objValue;
-				System.out.println("rose`");
 				// binary search to get the clustering record
-
 				Page p = binarySearchWithoutIndex(strTableName, strClusteringKey, clusteringvalueForEqual);
-				if (p == null) {
-					return res;
-				}
 				int index = p.binarySearch(strClusteringKey, clusteringvalueForEqual);
-				if (index < 0) {
-					return res;
-				}
 				Tuple tuple = p.getRecords().get(index);
 
 				// check for other sql terms
@@ -1450,7 +1401,7 @@ public class DBApp {
 			} else {
 				// check whether the record is in the page by checking the first and last value
 				String operator = termforRange._strOperator;
-				// System.out.println("Orange and Blue");
+
 				for (String page : pageNames) {
 					Page p = deserializePage(page);
 					if (operator.equals(">") || operator.equals(">=")) {
@@ -1460,48 +1411,49 @@ public class DBApp {
 							continue;
 						}
 					} else if (operator.equals("<") || operator.equals("<=")) {
-						System.out.println("Yellow and Green");
+
 						// if the first value doesnt satisfy the sql term with clustering key then next
 						// pages wont satisfy so break
-						if (!tupleSatisfiesSQLTerm(p.getFirstValue(), termforRange)) {
-							System.out.println("Yellow and Blue");
+						if (!tupleSatisfiesSQLTerm(p.getLastValue(), termforRange)) {
 							break;
 						}
 
-					}
-					// loop through the records to chech for satisfied tuples
+					} else {
+						// loop through the records to chech for satisfied tuples
 
-					for (Tuple tuple : p.getRecords()) {
-						// know if each tuple satisfies the sql terms
-						Vector<Boolean> flags = new Vector<>();
-						for (SQLTerm sqlTerm : arrSQLTerms) {
-							flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
-						}
-						// process sequentially all operators
-						for (int j = 0; j < strarrOperators.length; j++) {
-							if (strarrOperators[j].equals("AND")) {
-								Boolean resultAND = flags.get(0) && flags.get(1);
-								flags.remove(0);
-								flags.remove(0);
-								flags.add(0, resultAND);
+						for (Tuple tuple : p.getRecords()) {
+							// know if each tuple satisfies the sql terms
+							Vector<Boolean> flags = new Vector<>();
+							for (SQLTerm sqlTerm : arrSQLTerms) {
+								flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
+							}
+							// process sequentially all operators
+							for (int j = 0; j < strarrOperators.length; j++) {
+								if (strarrOperators[j].equals("AND")) {
+									Boolean resultAND = flags.get(0) && flags.get(1);
+									flags.remove(0);
+									flags.remove(0);
+									flags.add(0, resultAND);
 
-							} else if (strarrOperators[j].equals("OR")) {
-								Boolean resultOR = flags.get(0) || flags.get(1);
-								flags.remove(0);
-								flags.remove(0);
-								flags.add(0, resultOR);
+								} else if (strarrOperators[j].equals("OR")) {
+									Boolean resultOR = flags.get(0) || flags.get(1);
+									flags.remove(0);
+									flags.remove(0);
+									flags.add(0, resultOR);
 
-							} else {
-								Boolean resultXOR = flags.get(0) ^ flags.get(1);
-								flags.remove(0);
-								flags.remove(0);
-								flags.add(0, resultXOR);
+								} else {
+									Boolean resultXOR = flags.get(0) ^ flags.get(1);
+									flags.remove(0);
+									flags.remove(0);
+									flags.add(0, resultXOR);
+								}
+							}
+							if (flags.get(0)) {
+								res.add(tuple);
 							}
 						}
-						if (flags.get(0)) {
-							res.add(tuple);
-						}
 					}
+
 				}
 
 			}
@@ -2363,7 +2315,7 @@ public class DBApp {
 
 	// below method returns Iterator with result set if passed
 	// strbufSQL is a select, otherwise returns null.
-	public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
+	public Iterator parseSQL(StringBuffer strbufSQL) throws DBAppException {
 		String source = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\java\\antlr\\test.txt";
 		BufferedWriter writer = null;
 		try {
@@ -2395,12 +2347,8 @@ public class DBApp {
 		myVisitor visitor = new myVisitor();
 		visitor.visit(tree);
 
-
 		return visitor.getResultIterator();
 	}
-
-
-
 
 	/////////////////////////////////////////// END
 	/////////////////////////////////////////// //////////////////////////////////////////////////////////
@@ -2408,48 +2356,23 @@ public class DBApp {
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
 
-
 		DBApp dbApp = new DBApp();
-
-
-		//SQL QUERY FORMAT
-		//CREATE TABLE "Student" ( "id" INT PRIMARY KEY,"gpa" DOUBLE,"name" STRING);
-		//CREATE INDEX "nameIndex" ON "Students" ("name");
-		//INSERT INTO "Students" ("name","id","gpa") VALUES ("Hi",3,4.5);
-		//UPDATE "Student" SET "name"="John","age"=2,"gpa"=2.34 WHERE "id"=5;
-		//DELETE FROM "Student" WHERE "name"="Ahmed" AND "id=3" AND "gpa"=1.2;
-		//SELECT * FROM "Student" WHERE "name"="Ahmed" AND "age">10 OR "gpa"<3;
-
-
-
-		//EXECUTE THE QUERY
-		Scanner sc=new Scanner(System.in);
-		String sbTest=sc.nextLine();
-		Iterator<Tuple> result = dbApp.parseSQL(new StringBuffer(sbTest));
-
-
-
-
-
-
-
-//		DBApp dbApp = new DBApp();
-//		SQLTerm[] arrSQLTerms;
-//		arrSQLTerms = new SQLTerm[4];
-//		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
-//		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.0);
-//		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "=", 100.0);
-//		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
-//		String[] strarrOperators = new String[3];
-//		strarrOperators[0] = "AND";
-//		strarrOperators[1] = "AND";
-//		strarrOperators[2] = "OR";
-//		// Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
-//		// while (resultSet.hasNext()) {
-//		// System.out.println(resultSet.next());
-//		// }
-//		Vector<Object> v = dbApp.keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, "name");
-//		System.out.println(dbApp.queryOptimizer(v));
+		SQLTerm[] arrSQLTerms;
+		arrSQLTerms = new SQLTerm[4];
+		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
+		arrSQLTerms[1] = new SQLTerm("Student", "id", "<", 50);
+		arrSQLTerms[2] = new SQLTerm("Student", "id", "=", 100);
+		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
+		String[] strarrOperators = new String[3];
+		strarrOperators[0] = "AND";
+		strarrOperators[1] = "AND";
+		strarrOperators[2] = "OR";
+		// Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+		// while (resultSet.hasNext()) {
+		// System.out.println(resultSet.next());
+		// }
+		Vector<Object> v = dbApp.keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, "name");
+		System.out.println(dbApp.queryOptimizer(v));
 
 	}
 }
