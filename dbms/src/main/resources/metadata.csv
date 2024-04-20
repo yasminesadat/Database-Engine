@@ -1,4 +1,3 @@
-students, id, java.lang.integer, True, null, null
-students, gpa, java.lang.double, False, studentsGpaIndex, B+tree
-students, age, java.lang.integer, False, null, null
-students, name, java.lang.string, False, null, null
+Student, id, java.lang.integer, True, idINDEX, B+tree
+Student, gpa, java.lang.double, False, gpaINDEX, B+tree
+Student, name, java.lang.string, False, null, null
