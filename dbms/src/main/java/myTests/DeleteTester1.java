@@ -12,6 +12,9 @@ public class DeleteTester1 {
         Hashtable htblColNameValue = new Hashtable();
         htblColNameValue.put("id", new Integer(900));
         htblColNameValue.put("name", new String("Zaky Noor"));
-        dbApp.deleteFromTable(strTableName, htblColNameValue);
+        // dbApp.deleteFromTable(strTableName, htblColNameValue);
+        dbApp.deleteFromTable(strTableName, new Hashtable());
+        System.out.println(dbApp.deserializeIndex("gpaIndex"));
+
     }
 }

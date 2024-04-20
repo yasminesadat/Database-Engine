@@ -553,11 +553,19 @@ public class DBApp {
 					throw new DBAppException(e.getMessage());
 				}
 
-				t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
-
 			}
+			t.setStrPages(new Vector<>());
 			serializeTable(t);
+			// get all indices and create ones again
+			// delete method in b plus tree results in many nulls with the
+			// structure not maintained when too few nodes are left
+			for (String index : loadAllIndices(strTableName).keySet()) {
+				bplustree b = deserializeIndex(index);
+				serializeIndex(new bplustree(b.getM()), index);
+			}
+			return;
 		}
+
 		// case 1: if the hashtable contains a clustering key to delete and it has an
 		// index
 		else if (htblColNameValue.get(clusteringKey) != null && indexedColumns.get(clusteringKey) != null) {
@@ -1321,13 +1329,92 @@ public class DBApp {
 
 	}
 
+	// public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String>
+	// pageNames, SQLTerm[] arrSQLTerms,
+	// String[] strarrOperators) throws DBAppException {
+	// Vector<Tuple> res = new Vector<>();
+	// for (String page : pageNames) {
+	// Page p = deserializePage(page);
+	// for (Tuple tuple : p.getRecords()) {
+	// // know if each tuple satisfies the sql terms
+	// Vector<Boolean> flags = new Vector<>();
+	// for (SQLTerm sqlTerm : arrSQLTerms) {
+	// flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
+	// }
+	// // process sequentially all operators
+	// for (int j = 0; j < strarrOperators.length; j++) {
+	// if (strarrOperators[j].equals("AND")) {
+	// Boolean resultAND = flags.get(0) && flags.get(1);
+	// flags.remove(0);
+	// flags.remove(0);
+	// flags.add(0, resultAND);
+
+	// } else if (strarrOperators[j].equals("OR")) {
+	// Boolean resultOR = flags.get(0) || flags.get(1);
+	// flags.remove(0);
+	// flags.remove(0);
+	// flags.add(0, resultOR);
+
+	// } else {
+	// Boolean resultXOR = flags.get(0) ^ flags.get(1);
+	// flags.remove(0);
+	// flags.remove(0);
+	// flags.add(0, resultXOR);
+	// }
+	// }
+	// if (flags.get(0)) {
+	// res.add(tuple);
+	// }
+	// }
+	// }
+	// return res;
+	// }
 	public Vector<Tuple> searchRecordswithinSelectedPages(HashSet<String> pageNames, SQLTerm[] arrSQLTerms,
 			String[] strarrOperators) throws DBAppException {
+
+		// save result records in this vector
 		Vector<Tuple> res = new Vector<>();
-		for (String page : pageNames) {
-			Page p = deserializePage(page);
-			for (Tuple tuple : p.getRecords()) {
-				// know if each tuple satisfies the sql terms
+		// deserialize the table to get the strclustering key
+		String strTableName = arrSQLTerms[0]._strTableName;
+		Table t = deserializeTable(strTableName);
+		String strClusteringKey = t.getStrClusteringKeyColumn();
+
+		Vector<Object> v = keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, strClusteringKey);
+		// check whether the clustering key is included in the select query
+		Boolean flag = queryOptimizer(v);
+		if (flag) {
+			// check whether the clustering key is included with operator equal (to binary
+			// search across the pages)
+			boolean checkEqualOperator = false;
+			Object clusteringvalueForEqual = "";
+			SQLTerm termforequal = null;
+			SQLTerm termforRange = null;
+			for (SQLTerm term : arrSQLTerms) {
+				if (term._strColumnName.equals(strClusteringKey) && term._strOperator.equals("=")) {
+					checkEqualOperator = true;
+					termforequal = term;
+
+				} else if (term._strColumnName.equals(strClusteringKey) && !term._strOperator.equals("!=")) {
+					termforRange = term;
+				}
+			}
+
+			if (checkEqualOperator) {
+				clusteringvalueForEqual = termforequal._objValue;
+				System.out.println("rose`");
+				// binary search to get the clustering record
+
+				Page p = binarySearchWithoutIndex(strTableName, strClusteringKey, clusteringvalueForEqual);
+				if (p == null) {
+					return res;
+				}
+				int index = p.binarySearch(strClusteringKey, clusteringvalueForEqual);
+				if (index < 0) {
+					return res;
+				}
+				Tuple tuple = p.getRecords().get(index);
+
+				// check for other sql terms
 				Vector<Boolean> flags = new Vector<>();
 				for (SQLTerm sqlTerm : arrSQLTerms) {
 					flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
@@ -1356,9 +1443,109 @@ public class DBApp {
 				if (flags.get(0)) {
 					res.add(tuple);
 				}
+
+			} else {
+				// check whether the record is in the page by checking the first and last value
+				String operator = termforRange._strOperator;
+				// System.out.println("Orange and Blue");
+				for (String page : pageNames) {
+					Page p = deserializePage(page);
+					if (operator.equals(">") || operator.equals(">=")) {
+						// if the last value doesnt satisfy the sql term with clustering key so skip for
+						// the next page
+						if (!tupleSatisfiesSQLTerm(p.getLastValue(), termforRange)) {
+							continue;
+						}
+					} else if (operator.equals("<") || operator.equals("<=")) {
+						System.out.println("Yellow and Green");
+						// if the first value doesnt satisfy the sql term with clustering key then next
+						// pages wont satisfy so break
+						if (!tupleSatisfiesSQLTerm(p.getFirstValue(), termforRange)) {
+							System.out.println("Yellow and Blue");
+							break;
+						}
+
+					}
+					// loop through the records to chech for satisfied tuples
+
+					for (Tuple tuple : p.getRecords()) {
+						// know if each tuple satisfies the sql terms
+						Vector<Boolean> flags = new Vector<>();
+						for (SQLTerm sqlTerm : arrSQLTerms) {
+							flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
+						}
+						// process sequentially all operators
+						for (int j = 0; j < strarrOperators.length; j++) {
+							if (strarrOperators[j].equals("AND")) {
+								Boolean resultAND = flags.get(0) && flags.get(1);
+								flags.remove(0);
+								flags.remove(0);
+								flags.add(0, resultAND);
+
+							} else if (strarrOperators[j].equals("OR")) {
+								Boolean resultOR = flags.get(0) || flags.get(1);
+								flags.remove(0);
+								flags.remove(0);
+								flags.add(0, resultOR);
+
+							} else {
+								Boolean resultXOR = flags.get(0) ^ flags.get(1);
+								flags.remove(0);
+								flags.remove(0);
+								flags.add(0, resultXOR);
+							}
+						}
+						if (flags.get(0)) {
+							res.add(tuple);
+						}
+					}
+				}
+
+			}
+
+		}
+
+		else {
+			// there are no sql terms with clustering key to help with select so loop
+			// through all pages linearly
+
+			for (String page : pageNames) {
+				Page p = deserializePage(page);
+				for (Tuple tuple : p.getRecords()) {
+					// know if each tuple satisfies the sql terms
+					Vector<Boolean> flags = new Vector<>();
+					for (SQLTerm sqlTerm : arrSQLTerms) {
+						flags.add(tupleSatisfiesSQLTerm(tuple, sqlTerm));
+					}
+					// process sequentially all operators
+					for (int j = 0; j < strarrOperators.length; j++) {
+						if (strarrOperators[j].equals("AND")) {
+							Boolean resultAND = flags.get(0) && flags.get(1);
+							flags.remove(0);
+							flags.remove(0);
+							flags.add(0, resultAND);
+
+						} else if (strarrOperators[j].equals("OR")) {
+							Boolean resultOR = flags.get(0) || flags.get(1);
+							flags.remove(0);
+							flags.remove(0);
+							flags.add(0, resultOR);
+
+						} else {
+							Boolean resultXOR = flags.get(0) ^ flags.get(1);
+							flags.remove(0);
+							flags.remove(0);
+							flags.add(0, resultXOR);
+						}
+					}
+					if (flags.get(0)) {
+						res.add(tuple);
+					}
+				}
 			}
 		}
 		return res;
+
 	}
 
 	public Boolean tupleSatisfiesSQLTerm(Tuple tuple, SQLTerm sqlTerm) {
@@ -1575,33 +1762,3 @@ public class DBApp {
 
 	}
 }
-
-// public int binarySearchWithoutIndex(String strTableName, String
-// strClusteringKey, Object clusteringKeyValue)
-// throws DBAppException {
-// Table t = deserializeTable(strTableName);
-// boolean foundPage = false;
-// Page p = null;
-// for (String pageName : t.getStrPages()) {
-// p = deserializePage(pageName);
-// Object first = p.getFirstValue().getHtblTuple().get(strClusteringKey);
-// Object last = p.getLastValue().getHtblTuple().get(strClusteringKey);
-// if (clusteringKeyValue instanceof String)
-// foundPage = ((String) first).compareTo((String) clusteringKeyValue) <= 0
-// && ((String) last).compareTo((String) clusteringKeyValue) >= 0;
-// else if (clusteringKeyValue instanceof Integer)
-// foundPage = ((Integer) first).compareTo((Integer) clusteringKeyValue) <= 0
-// && ((Integer) last).compareTo((Integer) clusteringKeyValue) >= 0;
-// else
-// foundPage = ((Double) first).compareTo((Double) clusteringKeyValue) <= 0
-// && ((Double) last).compareTo((Double) clusteringKeyValue) >= 0;
-// if (foundPage)
-// break;
-
-// }
-// // if not page can potentially have this value for the clusteringKey
-// if (!foundPage) {
-// return -1;
-// } else
-// return p.binarySearch(strClusteringKey, clusteringKeyValue);
-// }

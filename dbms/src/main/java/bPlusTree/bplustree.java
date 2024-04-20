@@ -8,6 +8,10 @@ public class bplustree implements Serializable {
     InternalNode root;
     LeafNode firstLeaf;
 
+    public int getM() {
+        return m;
+    }
+
     /**
      * Constructor
      * 
