@@ -13,18 +13,32 @@ public class Table implements Serializable {
     private int nextPageNum = 1;
 
     public int getNextPageNum(int pageNum) {
-        for (int i = 0; i < strPages.size(); i++) {
-            String page = strPages.get(i);
+        int low = 0;
+        int high = strPages.size() - 1;
+
+        while (low <= high) {
+            int mid = low + (high - low) / 2;
+            String page = strPages.get(mid);
             String[] s = page.split("_");
-            if (s[1].equals(pageNum + "")) {
+            int currentPageNum = Integer.parseInt(s[1]);
+
+            if (currentPageNum == pageNum) {
                 // when next page exists in vector
-                if (i + 1 < strPages.size()) {
-                    String res = strPages.get(i + 1);
-                    return Integer.parseInt(res.charAt(res.length() - 1) + "");
+                if (mid + 1 < strPages.size()) {
+                    String res = strPages.get(mid + 1);
+                    String[] s1 = res.split("_");
+                    return Integer.parseInt(s1[1]);
                 } else
                     return pageNum + 1;
             }
+
+            if (currentPageNum < pageNum) {
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
         }
+
         return -1;
     }
 
