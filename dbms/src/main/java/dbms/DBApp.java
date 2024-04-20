@@ -7,6 +7,7 @@ import bPlusTree.bplustree.LeafNode;
 
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.Stack;
 import java.util.Vector;
 import java.util.stream.Collectors;
 import java.io.BufferedReader;
@@ -1735,6 +1736,627 @@ public class DBApp {
 			throw new DBAppException(e.getMessage());
 		}
 		return indices;
+	}
+
+	// SELECT With Precedence
+	public Vector<Object> convertinfixtoPostfix(SQLTerm[] arrSQLTerms,
+			String[] strarrOperators) {
+		Stack<String> operators = new Stack<>();
+		Vector<Object> resultpostfix = new Vector<>();
+		int i = 0;
+		int j = 0;
+		while (i < arrSQLTerms.length || j < strarrOperators.length) {
+			resultpostfix.add(arrSQLTerms[i]);
+			i++;
+			if (j < strarrOperators.length) {
+				if (operators.isEmpty()) {
+					operators.add(strarrOperators[j]);
+					j++;
+				} else {
+					// check priority of the inserted operator with the other operators in stack
+					// boolean higher= checkhigherprecedence(strarrOperators[j], operators.peek());
+					// i am making sure that all the operands left are of lower priproty if not pop
+					// or the stack has not become empty yet
+					while (!operators.isEmpty() && !checkhigherprecedence(strarrOperators[j], operators.peek())) {
+						resultpostfix.add(operators.pop());
+					}
+					operators.add(strarrOperators[j]);
+					j++;
+
+				}
+			}
+
+		}
+		while (!operators.isEmpty()) {
+			resultpostfix.add(operators.pop());
+		}
+
+		return resultpostfix;
+
+	}
+
+	// check whether the inserted value has higher precedence than el peeked value
+	public boolean checkhigherprecedence(String insertedValue, String peekedValue) {
+		if (insertedValue.equals("AND")) {
+			if (peekedValue.equals("AND")) {
+				return false;
+			} else {
+				return true;
+			}
+		} else if (insertedValue.equals("OR")) {
+			if (peekedValue.equals("AND") || peekedValue.equals("OR")) {
+				return false;
+			} else {
+				return true;
+			}
+		} else if (insertedValue.equals("XOR")) {
+			return false;
+		}
+		return false;
+	}
+
+	public boolean queryOptimizerWithPrecedence(Vector<Object> operations) {
+		// all have indices
+		if (!operations.contains(false)) {
+			return true;
+		}
+		// process sequentially all operators
+		int j = 1;
+		while (j < operations.size() - 1) {
+			// AND case: if any have index open these pages from bPlusTree
+			if (operations.get(j).equals("AND")) {
+				Boolean resultAND = (Boolean) operations.get(j - 1) || (Boolean) operations.get(j + 1);
+				operations.remove(j - 1);
+				operations.remove(j);
+				operations.set(j - 1, resultAND);
+				// OR or XOR case: both must have indices for an index to be used
+				// otherwise, must loop over all tuples
+			}
+			j++;
+
+		}
+		j = 1;
+		while (j < operations.size() - 1) {
+			if (!operations.get(j).equals("AND")) {
+				Boolean result = (Boolean) operations.get(j - 1) && (Boolean) operations.get(j + 1);
+				operations.remove(j - 1);
+				operations.remove(j);
+				operations.set(j - 1, result);
+			}
+			j++;
+		}
+		System.out.println("After processing");
+		System.out.println(operations);
+		// XOR and OR operators will require opening all pages if any don't have an
+		// index
+		return (Boolean) operations.get(0);
+
+	}
+
+	public Iterator selectFromTableWithPrecedence(SQLTerm[] arrSQLTerms,
+			String[] strarrOperators) throws DBAppException {
+
+		// Check for valid input
+		if (arrSQLTerms.length == 0 || strarrOperators.length != arrSQLTerms.length - 1) {
+			throw new DBAppException("Invalid input: Term and Operator arrays mismatch");
+		}
+		// didnt complete to check whether this case is possible or an error
+		// // select * from table without condition
+		// if(arrSQLTerms.length != 0 && arrSQLTerms[0]._strTableName!=null
+		// && arrSQLTerms[0]._objValue==null && arrSQLTerms[0]._strColumnName==null
+		// && arrSQLTerms[0]._strOperator==null){
+		// Table t=deserializeTable(arrSQLTerms[0]._strTableName);
+		// HashSet<String> pages=new HashSet<String>(t.getStrPages());
+		// System.out.println("violet");
+
+		// // return searchRecordswithinSelectedPages(pages, sql, operators).iterator();
+
+		// }
+
+		checkDataForSelect(arrSQLTerms, strarrOperators);
+		Hashtable<String, String> columns = loadAllColumnsHavingIndex(arrSQLTerms[0]._strTableName);
+		Vector<Object> operations = queryOperationsGenerator(arrSQLTerms, strarrOperators, columns);
+		// passed by reference to method
+		Vector<Object> operationsCopy = new Vector<>();
+		operationsCopy.addAll(operations);
+		boolean useIndex = queryOptimizerWithPrecedence(operationsCopy);
+		// keep only sql terms true and false in operations vector to access it with
+		// same index
+		operations.removeIf(element -> element instanceof String);
+		System.out.println("operations" + operations);
+		System.out.println("useIndex:" + useIndex);
+		// as not to contain duplicates
+		HashSet<String> pages = new HashSet<>();
+		if (useIndex) {
+			pages = selectForAllWithAllIndexWithPrecedence(arrSQLTerms, strarrOperators);
+		} else {
+			// direct tuple manipulation in all pages
+			Table t = deserializeTable(arrSQLTerms[0]._strTableName);
+			pages.addAll(t.getStrPages());
+			t = null;
+		}
+		return selectForAllWithoutIndexWithPrecedence(arrSQLTerms, strarrOperators, pages);
+	}
+
+	public HashSet<String> selectForAllWithAllIndexWithPrecedence(SQLTerm[] arrSQLTerms,
+			String[] strarrOperators) throws DBAppException {
+		String strTableName = arrSQLTerms[0]._strTableName;
+		// load all indices
+		Hashtable<String, String> indexhtbl = loadAllColumnsHavingIndex(strTableName);
+
+		// check if the are all AND operators
+		boolean andonly = true;
+		for (int i = 0; i < strarrOperators.length; i++) {
+			if (!strarrOperators[i].equals("AND")) {
+				andonly = false;
+				break;
+			}
+
+		}
+
+		if (andonly) {
+			// loop to get the first indexed column
+			String firstindexname = "";
+			SQLTerm firstindexedsqlterm = new SQLTerm();
+			for (int i = 0; i < arrSQLTerms.length; i++) {
+				if (indexhtbl.get(arrSQLTerms[i]._strColumnName) != null) {
+					firstindexname = indexhtbl.get(arrSQLTerms[i]._strColumnName);
+					firstindexedsqlterm = arrSQLTerms[i];
+
+					break;
+
+				}
+			}
+			bplustree indextree = deserializeIndex(firstindexname);
+			HashSet<String> pagenames = new HashSet<String>(executeindexedSQlterm(indextree, firstindexedsqlterm));
+			HashSet<String> pages = new HashSet<>(pagenames);
+
+			return pages;
+
+		} else {
+			Vector<Object> postfix = convertinfixtoPostfix(arrSQLTerms, strarrOperators);
+			Stack<Object> sqltermsorResult = new Stack<>();
+
+			System.out.println("THE POSTFIX SIZE IS: " + postfix.size());
+			for (int i = 0; i < postfix.size(); i++) {
+
+				if (postfix.get(i) instanceof SQLTerm) {
+					sqltermsorResult.add(postfix.get(i));
+				}
+				if (postfix.get(i) instanceof String) {
+					String stroperator = (String) postfix.get(i);
+					HashSet<String> pagenames1 = new HashSet<>();
+					HashSet<String> pagenames2 = new HashSet<>();
+					boolean indexfound1 = false;
+					boolean indexfound2 = false;
+
+					if (sqltermsorResult.peek() instanceof SQLTerm) {
+						SQLTerm sql1 = (SQLTerm) sqltermsorResult.pop();
+						String indexName = indexhtbl.get(sql1._strColumnName);
+						if (indexName != null && !sql1._strOperator.equals("!=")) {
+							indexfound1 = true;
+							/// compute the sqlterm with b+tree
+							bplustree indextree = deserializeIndex(indexName);
+							pagenames2 = new HashSet<String>(executeindexedSQlterm(indextree, sql1));
+							serializeIndex(indextree, indexName);
+						}
+					} else if (sqltermsorResult.peek() instanceof HashSet) {
+						// System.out.println("temp hashset of results :
+						// "+Arrays.toString(((HashSet<String>)sqltermsorResult.pop()).toArray()));
+						// Vector<String> v=null;
+						// v.get(i);
+						pagenames1 = (HashSet<String>) sqltermsorResult.pop();
+						indexfound1 = true;
+
+					}
+
+					if (sqltermsorResult.peek() instanceof SQLTerm) {
+						SQLTerm sql2 = (SQLTerm) sqltermsorResult.pop();
+						String indexName = indexhtbl.get(sql2._strColumnName);
+						if (indexName != null && !sql2._strOperator.equals("!=")) {
+							indexfound2 = true;
+							/// compute the sqlterm with b+tree
+							bplustree indextree = deserializeIndex(indexName);
+							pagenames2 = new HashSet<String>(executeindexedSQlterm(indextree, sql2));
+							serializeIndex(indextree, indexName);
+
+						}
+					} else if (sqltermsorResult.peek() instanceof HashSet) {
+
+						pagenames2 = (HashSet<String>) sqltermsorResult.pop();
+						indexfound2 = true;
+
+					}
+
+					// if index found in the 2 columns
+					if (indexfound1 && indexfound2) {
+						// when AND
+						if (stroperator.equals("AND")) {
+							HashSet<String> common = new HashSet<>(pagenames1);
+							common.retainAll(pagenames2);
+							// add it back to the stack
+							sqltermsorResult.push(common);
+
+						} else if (stroperator.equals("OR")) {
+							HashSet<String> union = new HashSet<>(pagenames1);
+							union.addAll(pagenames2);
+							// add it back to the stack
+							sqltermsorResult.push(union);
+						} else if (stroperator.equals("XOR")) {
+							HashSet<String> xor = new HashSet<String>(pagenames1);
+							HashSet<String> intersection = new HashSet<>(pagenames1);
+
+							// xor= union - intersection
+
+							// get the intersection (common between pagenames1 and pagenames2)
+							intersection.retainAll(pagenames2);
+							// put the union first in the xor
+							xor.addAll(intersection);
+							// remove the intersection from the xor
+							xor.removeAll(intersection);
+							sqltermsorResult.push(xor);
+						}
+					} else if (indexfound1 || indexfound2) {
+						HashSet<String> pagenames;
+						// save the page names of the one with index
+						if (indexfound1) {
+							pagenames = pagenames1;
+						} else {
+							pagenames = pagenames2;
+						}
+						// only valid condition if we should use pogenames is the ANDing between index
+						// and non index
+						if (stroperator.equals("AND")) {
+							sqltermsorResult.push(pagenames);
+						}
+					}
+
+				}
+			}
+			// the stack should only have only 1 value which is the result hashset
+			if (sqltermsorResult.size() == 1) {
+				// the end result of page names is a Hashset so convert it into vector of tuples
+				HashSet<String> pages = new HashSet<String>((HashSet<String>) sqltermsorResult.pop());
+
+				return pages;
+
+			}
+		}
+
+		return null;
+	}
+
+	public Iterator<Tuple> selectForAllWithoutIndexWithPrecedence(SQLTerm[] arrSQLTerms,
+			String[] strarrOperators, HashSet<String> pages) throws DBAppException {
+		String strTableName = arrSQLTerms[0]._strTableName;
+		Table table = deserializeTable(strTableName);
+		Vector<Tuple> selectedRows = new Vector<>();
+
+		// loop to check for undefined operators
+		for (int i = 0; i < strarrOperators.length; i++) {
+			if (!(strarrOperators[i].equals("AND") || strarrOperators[i].equals("OR")
+					|| strarrOperators[i].equals("XOR"))) {
+				throw new DBAppException("There are undefined operator(s) in the select query");
+			}
+		}
+
+		Vector<String> pages2 = new Vector<String>(pages);
+		for (String page : pages) {
+			Page currentPage = deserializePage(page);
+			Vector<Tuple> rows = currentPage.getRecords();
+			for (Tuple row : rows) {
+				Vector<Boolean> flags = new Vector<>();
+				for (SQLTerm sqlTerm : arrSQLTerms) {
+					String strColumnName = sqlTerm._strColumnName;
+					Object objValue = sqlTerm._objValue;
+					String operator = sqlTerm._strOperator;
+					flags.add(CompareWithoutIndex(strTableName, row, strColumnName, objValue, operator));
+				}
+				System.out.println("flags are " + flags);
+				boolean res = false;
+
+				// we will loop to check for AND operators and save the AND operators in a
+				// hashtable
+				// where the key is the index of the operator in the stararroperator and the
+				// value result of this operation
+
+				// [t,f,f,t,f]
+				// ['name=John',age>50]
+				// ['OR','OR','AND','AND']
+				Hashtable<Integer, Boolean> andResults = new Hashtable<>();
+				for (int i = 0; i < strarrOperators.length; i++) {
+
+					if (strarrOperators[i].equals("AND")) {
+						if (i == 0) {
+							res = flags.get(i) && flags.get(i + 1);
+							andResults.put(i, res);
+
+						} else if (strarrOperators[i - 1].equals("AND")) {
+							res = (andResults.get((i - 1)) && flags.get(i + 1));
+							andResults.put(i, res);
+						} else {
+							res = flags.get(i) && flags.get(i + 1);
+							andResults.put(i, res);
+						}
+					}
+				}
+				Hashtable<Integer, Boolean> orResults = new Hashtable<>();
+				for (int i = 0; i < strarrOperators.length; i++) {
+					System.out.println("i is: " + i);
+					System.out.println("operator  is: " + strarrOperators[i]);
+
+					if (strarrOperators[i].equals("OR")) {
+						Boolean before = false;
+						Boolean after = false;
+
+						if (i == 0 && i == strarrOperators.length - 1) {
+							before = null;
+							after = null;
+						}
+						if (i == 0) {
+							before = null;
+						} else if (i == strarrOperators.length - 1) {
+							System.out.println("blue");
+							after = null;
+						}
+						if (before != null) {
+							if (strarrOperators[i - 1].equals("AND")) {
+								before = andResults.get(i - 1);
+
+							} else if (strarrOperators[i - 1].equals("OR")) {
+								before = orResults.get(i - 1);
+							}
+
+							else {
+								before = flags.get(i);
+							}
+						}
+						if (after != null) {
+							if (strarrOperators[i + 1].equals("AND")) {
+								after = andResults.get(i + 1);
+
+							} else {
+								after = flags.get(i + 1);
+							}
+
+						}
+
+						if (before == null && after == null) {
+							// res=flags.get(i)&& flags.get(i+1);
+							// andResults.put(i,res);
+
+							res = flags.get(i) || flags.get(i + 1);
+							orResults.put(i, res);
+							// orResults.put(i,(flags.get(i) || flags.get(i+1)));
+						}
+						/// [t,f,t]
+						// [OR,and]
+						else if (after == null) {
+							res = before || flags.get(i + 1);
+
+							orResults.put(i, res);
+						} else if (before == null) {
+							res = (flags.get(i) || after);
+							orResults.put(i, res);
+
+						} else {
+							res = (before || after);
+							orResults.put(i, res);
+						}
+					}
+				}
+
+				///// CHECKING FOR XOR OPERATIONS
+				Hashtable<Integer, Boolean> xorResults = new Hashtable<>();
+				for (int i = 0; i < strarrOperators.length; i++) {
+					if (!strarrOperators[i].equals("XOR")) {
+						continue;
+					}
+					Boolean before = false;
+					Boolean after = false;
+
+					if (i == 0 && i == strarrOperators.length - 1) {
+						before = null;
+						after = null;
+					}
+					if (i == 0) {
+						before = null;
+					} else if (i == strarrOperators.length - 1) {
+						after = null;
+					}
+					if (before != null) {
+						if (strarrOperators[i - 1].equals("AND")) {
+							before = andResults.get(i - 1);
+
+						} else if (strarrOperators[i - 1].equals("OR")) {
+							before = orResults.get(i - 1);
+						} else if (strarrOperators[i - 1].equals("XOR")) {
+							before = xorResults.get(i - 1);
+						} else {
+							before = flags.get(i);
+						}
+					}
+					if (after != null) {
+						if (strarrOperators[i + 1].equals("AND")) {
+							after = andResults.get(i + 1);
+
+						} else if (strarrOperators[i + 1].equals("OR")) {
+							after = orResults.get(i + 1);
+						} else {
+							after = flags.get(i + 1);
+						}
+
+					}
+
+					if (before == null && after == null) {
+						res = (flags.get(i) ^ flags.get(i + 1));
+						xorResults.put(i, res);
+					} else if (after == null) {
+						res = (before ^ flags.get(i + 1));
+						xorResults.put(i, res);
+					} else if (before == null) {
+						res = (flags.get(i) ^ after);
+						xorResults.put(i, res);
+					} else {
+						res = (before ^ after);
+						xorResults.put(i, res);
+					}
+				}
+				System.out.println("Result boolean : " + res);
+				/////// check that the row meet all conditions //////
+				if (res) {
+					selectedRows.add(row);
+				}
+
+			}
+
+		}
+
+		Iterator<Tuple> selectionResult = selectedRows.iterator();
+		return selectionResult;
+
+	}
+
+	public Boolean CompareWithoutIndex(String strTableName, Tuple row, String strColumnName, Object objValue,
+			String operator) {
+
+		// Table table=deserializeTable(strTableName);
+
+		Hashtable<String, Object> htblTuple = row.getHtblTuple();
+		System.out.println("Hashtable : " + htblTuple);
+		System.out.println("col Name " + strColumnName);
+		Object ob = htblTuple.get(strColumnName);
+		// get clustering key and its datatype from csv
+		String datatype = "";
+		BufferedReader br = null;
+		String line = "";
+		try {
+			br = new BufferedReader(new FileReader(METADATA_PATH));
+
+			while ((line = br.readLine()) != null) {
+				String[] s = line.split(", ");
+				if (s[0].equals(strTableName) && s[1].equals(strColumnName)) {
+					datatype = s[2];
+					break;
+				}
+
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		if (operator.equals(">")) {
+			int comparable = 5;
+			switch (datatype.toLowerCase()) {
+				case "java.lang.integer":
+					comparable = ((Integer) ob).compareTo((Integer) objValue);
+					break;
+				case "java.lang.string":
+					comparable = ((String) ob).compareTo((String) objValue);
+					break;
+				case "java.lang.double":
+					comparable = ((Double) ob).compareTo((Double) objValue);
+					break;
+			}
+			if (comparable > 0) {
+				return true;
+			}
+
+		} else if (operator.equals(">=")) {
+			int comparable = 5;
+			switch (datatype.toLowerCase()) {
+				case "java.lang.integer":
+					comparable = ((Integer) ob).compareTo((Integer) objValue);
+					break;
+				case "java.lang.string":
+					comparable = ((String) ob).compareTo((String) objValue);
+					break;
+				case "java.lang.double":
+					comparable = ((Double) ob).compareTo((Double) objValue);
+					break;
+			}
+			if (comparable >= 0) {
+				return true;
+			}
+		} else if (operator.equals("<")) {
+			int comparable = 5;
+			switch (datatype.toLowerCase()) {
+				case "java.lang.integer":
+					comparable = ((Integer) ob).compareTo((Integer) objValue);
+					break;
+				case "java.lang.string":
+					comparable = ((String) ob).compareTo((String) objValue);
+					break;
+				case "java.lang.double":
+					comparable = ((Double) ob).compareTo((Double) objValue);
+					break;
+			}
+			if (comparable < 0) {
+				return true;
+			}
+		} else if (operator.equals("<=")) {
+			int comparable = 5;
+			switch (datatype.toLowerCase()) {
+				case "java.lang.integer":
+					comparable = ((Integer) ob).compareTo((Integer) objValue);
+					break;
+				case "java.lang.string":
+					comparable = ((String) ob).compareTo((String) objValue);
+					break;
+				case "java.lang.double":
+					comparable = ((Double) ob).compareTo((Double) objValue);
+					break;
+			}
+			if (comparable <= 0) {
+				return true;
+			}
+		} else if (operator.equals("=")) {
+			System.out.println("operator is right");
+			int comparable = 5;
+			switch (datatype.toLowerCase()) {
+				case "java.lang.integer":
+					comparable = ((Integer) ob).compareTo((Integer) objValue);
+					break;
+				case "java.lang.string":
+					comparable = ((String) ob).compareTo((String) objValue);
+					break;
+				case "java.lang.double":
+					comparable = ((Double) ob).compareTo((Double) objValue);
+					break;
+			}
+			System.out.println(datatype);
+			System.out.println("objectrow is " + (String) (ob + ""));
+			System.out.println("objvalue is" + (String) (objValue + ""));
+
+			System.out.println("Comparable is " + comparable);
+			if (comparable == 0) {
+				return true;
+			}
+
+		} else if (operator.equals("!=")) {
+			System.out.println("operator is right");
+			int comparable = 5;
+			switch (datatype.toLowerCase()) {
+				case "java.lang.integer":
+					comparable = ((Integer) ob).compareTo((Integer) objValue);
+					break;
+				case "java.lang.string":
+					comparable = ((String) ob).compareTo((String) objValue);
+					break;
+				case "java.lang.double":
+					comparable = ((Double) ob).compareTo((Double) objValue);
+					break;
+			}
+			System.out.println(datatype);
+			System.out.println("objectrow is " + (String) (ob + ""));
+			System.out.println("objvalue is" + (String) (objValue + ""));
+
+			System.out.println("Comparable is " + comparable);
+			if (comparable != 0) {
+				return true;
+			}
+
+		}
+		return false;
 	}
 
 	/////////////////////////////////////////// END
