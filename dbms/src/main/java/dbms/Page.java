@@ -35,7 +35,7 @@ public class Page implements Serializable {
         try {
             Properties prop = new Properties();
             // main
-            Path path = Path.of("dbms/src/main/resources/DBApp.config");
+            Path path = Path.of("C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\DBApp.config");
             // for JUnit
             // Path path = Path.of(
             // "E:/Semester 6/Database

@@ -70,4 +70,8 @@ public class Table implements Serializable {
 
     }
 
+    public void setStrPages(Vector<String> strPages) {
+        this.strPages = strPages;
+    }
+
 }
