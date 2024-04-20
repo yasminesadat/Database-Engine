@@ -1,1 +1,0 @@
-CREATE TABLE "Studentsss" ( "id" INT PRIMARY KEY,"gpa" DOUBLE,"name" STRING);

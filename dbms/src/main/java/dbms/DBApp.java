@@ -1,15 +1,15 @@
 package dbms;
 
 /** * @author Wael Abouelsaadat */
-import antlr.SQLLexer;
-import antlr.SQLParser;
-import antlr.myVisitor;
+// import antlr.SQLLexer;
+// import antlr.SQLParser;
+// import antlr.myVisitor;
 import bPlusTree.bplustree;
 import bPlusTree.bplustree.DictionaryPair;
 import bPlusTree.bplustree.LeafNode;
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
+// import org.antlr.v4.runtime.CharStream;
+// import org.antlr.v4.runtime.CommonTokenStream;
+// import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,15 +31,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.antlr.v4.runtime.CharStreams.fromFileName;
+//import static org.antlr.v4.runtime.CharStreams.fromFileName;
 
 public class DBApp {
 	// generic
-	private static final String METADATA_PATH = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\metadata.csv";
-	private static final String CONFIG_FILE_PATH = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\DBApp.config";
-	private static final String TABLES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Tables\\";
-	private static final String PAGES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Pages\\";
-	private static final String INDICES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Indices\\";
+	private static final String METADATA_PATH = "dbms/src/main/resources/metadata.csv";
+	private static final String CONFIG_FILE_PATH = "dbms/src/main/resources/DBApp.config";
+	private static final String TABLES_DIR = "dbms/src/main/resources/Tables/";
+	private static final String PAGES_DIR = "dbms/src/main/resources/Pages/";
+	private static final String INDICES_DIR = "dbms/src/main/resources/Indices/";
 
 	// for JUNIT tests
 	// private static final String METADATA_PATH = "E:/Semester 6/Database
@@ -340,7 +340,7 @@ public class DBApp {
 			// Propagate the displaced tuple to the next pages
 			while (displacedTuple != null) {
 				// Calculate the next page number
-				int nextPageNum = Integer.parseInt(displacedTuplePageNum) + 1;
+				int nextPageNum = t.getNextPageNum(Integer.parseInt(displacedTuplePageNum));
 				Page nextPage;
 
 				// Check if the next page exists, if not create it
@@ -383,7 +383,7 @@ public class DBApp {
 					System.out.println("displaced tuple: " + row);
 					Hashtable<String, Object> h = row.getHtblTuple();
 					b.delete(h.get(colName), displacedElements.get(row));
-					int newPage = Integer.parseInt(displacedElements.get(row)) + 1;
+					int newPage = t.getNextPageNum(Integer.parseInt(displacedElements.get(row)));
 					b.insert(h.get(colName), newPage + "");
 				}
 				serializeIndex(b, i);
@@ -607,7 +607,20 @@ public class DBApp {
 					throw new DBAppException(e.getMessage());
 				}
 				Table t = deserializeTable(strTableName);
-				t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+				// t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+				// loop on the strpages and check the last number of the string for exmaple the
+				// 1 in Student_1 is equal to the page num
+				// then delete that pagename after the loop
+				Vector<String> strpages = t.getStrPages();
+				int indexToBeDeleted = -1;
+				for (int k = 0; k < strpages.size(); k++) {
+					if (strpages.get(k).charAt(strpages.get(k).length() - 1) == p.getPageNum().charAt(0)) {
+						indexToBeDeleted = k;
+					}
+				}
+				if (indexToBeDeleted > -1) {
+					t.getStrPages().remove(indexToBeDeleted);
+				}
 				serializeTable(t);
 			}
 
@@ -658,7 +671,19 @@ public class DBApp {
 							throw new DBAppException(e.getMessage());
 						}
 						Table t = deserializeTable(strTableName);
-						t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+						// loop on the strpages and check the last number of the string for exmaple the
+						// 1 in Student_1 is equal to the page num
+						// then delete that pagename after the loop
+						Vector<String> strpages = t.getStrPages();
+						int indexToBeDeleted = -1;
+						for (int k = 0; k < strpages.size(); k++) {
+							if (strpages.get(k).charAt(strpages.get(k).length() - 1) == p.getPageNum().charAt(0)) {
+								indexToBeDeleted = k;
+							}
+						}
+						if (indexToBeDeleted > -1) {
+							t.getStrPages().remove(indexToBeDeleted);
+						}
 						serializeTable(t);
 					}
 					deletedTuples.put(row, p.getPageNum());
@@ -696,7 +721,20 @@ public class DBApp {
 									} catch (IOException e) {
 										throw new DBAppException(e.getMessage());
 									}
-									t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+									// loop on the strpages and check the last number of the string for exmaple the
+									// 1 in Student_1 is equal to the page num
+									// then delete that pagename after the loop
+									Vector<String> strpages = t.getStrPages();
+									int indexToBeDeleted = -1;
+									for (int k = 0; k < strpages.size(); k++) {
+										if (strpages.get(k).charAt(strpages.get(k).length() - 1) == p.getPageNum()
+												.charAt(0)) {
+											indexToBeDeleted = k;
+										}
+									}
+									if (indexToBeDeleted > -1) {
+										t.getStrPages().remove(indexToBeDeleted);
+									}
 								}
 							}
 						}
@@ -773,7 +811,20 @@ public class DBApp {
 									throw new DBAppException(e.getMessage());
 								}
 								Table t = deserializeTable(strTableName);
-								t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+								// loop on the strpages and check the last number of the string for exmaple the
+								// 1 in Student_1 is equal to the page num
+								// then delete that pagename after the loop
+								Vector<String> strpages = t.getStrPages();
+								int indexToBeDeleted = -1;
+								for (int k = 0; k < strpages.size(); k++) {
+									if (strpages.get(k).charAt(strpages.get(k).length() - 1) == p.getPageNum()
+											.charAt(0)) {
+										indexToBeDeleted = k;
+									}
+								}
+								if (indexToBeDeleted > -1) {
+									t.getStrPages().remove(indexToBeDeleted);
+								}
 								serializeTable(t);
 							}
 							deletedTuples.put(row, p.getPageNum());
@@ -816,7 +867,20 @@ public class DBApp {
 										throw new DBAppException(e.getMessage());
 									}
 
-									t.getStrPages().remove(Integer.parseInt(p.getPageNum()) - 1);
+									// loop on the strpages and check the last number of the string for exmaple the
+									// 1 in Student_1 is equal to the page num
+									// then delete that pagename after the loop
+									Vector<String> strpages = t.getStrPages();
+									int indexToBeDeleted = -1;
+									for (int k = 0; k < strpages.size(); k++) {
+										if (strpages.get(k).charAt(strpages.get(k).length() - 1) == p.getPageNum()
+												.charAt(0)) {
+											indexToBeDeleted = k;
+										}
+									}
+									if (indexToBeDeleted > -1) {
+										t.getStrPages().remove(indexToBeDeleted);
+									}
 								}
 							}
 						}
@@ -2363,44 +2427,41 @@ public class DBApp {
 
 	// below method returns Iterator with result set if passed
 	// strbufSQL is a select, otherwise returns null.
-	public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
-		String source = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\java\\antlr\\test.txt";
-		BufferedWriter writer = null;
-		try {
-			writer = new BufferedWriter(new FileWriter(source, false));
-		} catch (IOException e) {
-			throw new DBAppException(e.getMessage());
-		}
-		try {
-			writer.write(strbufSQL.toString());
-		} catch (IOException e) {
-			throw new DBAppException(e.getMessage());
-		}
-		try {
-			writer.close();
-		} catch (IOException e) {
-			throw new DBAppException(e.getMessage());
-		}
-		CharStream cs = null;
-		try {
-			cs = fromFileName(source);
-		} catch (IOException e) {
-			throw new DBAppException(e.getMessage());
-		}
-		antlr.SQLLexer lexer = new SQLLexer(cs);
-		CommonTokenStream token = new CommonTokenStream(lexer);
-		SQLParser parser = new SQLParser(token);
-		ParseTree tree = parser.parse();
+	// public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
+	// String source =
+	// "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\java\\antlr\\test.txt";
+	// BufferedWriter writer = null;
+	// try {
+	// writer = new BufferedWriter(new FileWriter(source, false));
+	// } catch (IOException e) {
+	// throw new DBAppException(e.getMessage());
+	// }
+	// try {
+	// writer.write(strbufSQL.toString());
+	// } catch (IOException e) {
+	// throw new DBAppException(e.getMessage());
+	// }
+	// try {
+	// writer.close();
+	// } catch (IOException e) {
+	// throw new DBAppException(e.getMessage());
+	// }
+	// CharStream cs = null;
+	// try {
+	// cs = fromFileName(source);
+	// } catch (IOException e) {
+	// throw new DBAppException(e.getMessage());
+	// }
+	// antlr.SQLLexer lexer = new SQLLexer(cs);
+	// CommonTokenStream token = new CommonTokenStream(lexer);
+	// SQLParser parser = new SQLParser(token);
+	// ParseTree tree = parser.parse();
 
-		myVisitor visitor = new myVisitor();
-		visitor.visit(tree);
+	// myVisitor visitor = new myVisitor();
+	// visitor.visit(tree);
 
-
-		return visitor.getResultIterator();
-	}
-
-
-
+	// return visitor.getResultIterator();
+	// }
 
 	/////////////////////////////////////////// END
 	/////////////////////////////////////////// //////////////////////////////////////////////////////////
@@ -2408,48 +2469,34 @@ public class DBApp {
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
 
-
 		DBApp dbApp = new DBApp();
 
+		// SQL QUERY FORMAT
+		// CREATE TABLE "Student" ( "id" INT PRIMARY KEY,"gpa" DOUBLE,"name" STRING);
+		// CREATE INDEX "nameIndex" ON "Students" ("name");
+		// INSERT INTO "Students" ("name","id","gpa") VALUES ("Hi",3,4.5);
+		// UPDATE "Student" SET "name"="John","age"=2,"gpa"=2.34 WHERE "id"=5;
+		// DELETE FROM "Student" WHERE "name"="Ahmed" AND "id=3" AND "gpa"=1.2;
+		// SELECT * FROM "Student" WHERE "name"="Ahmed" AND "age">10 OR "gpa"<3;
 
-		//SQL QUERY FORMAT
-		//CREATE TABLE "Student" ( "id" INT PRIMARY KEY,"gpa" DOUBLE,"name" STRING);
-		//CREATE INDEX "nameIndex" ON "Students" ("name");
-		//INSERT INTO "Students" ("name","id","gpa") VALUES ("Hi",3,4.5);
-		//UPDATE "Student" SET "name"="John","age"=2,"gpa"=2.34 WHERE "id"=5;
-		//DELETE FROM "Student" WHERE "name"="Ahmed" AND "id=3" AND "gpa"=1.2;
-		//SELECT * FROM "Student" WHERE "name"="Ahmed" AND "age">10 OR "gpa"<3;
-
-
-
-		//EXECUTE THE QUERY
-		Scanner sc=new Scanner(System.in);
-		String sbTest=sc.nextLine();
-		Iterator<Tuple> result = dbApp.parseSQL(new StringBuffer(sbTest));
-
-
-
-
-
-
-
-//		DBApp dbApp = new DBApp();
-//		SQLTerm[] arrSQLTerms;
-//		arrSQLTerms = new SQLTerm[4];
-//		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
-//		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.0);
-//		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "=", 100.0);
-//		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
-//		String[] strarrOperators = new String[3];
-//		strarrOperators[0] = "AND";
-//		strarrOperators[1] = "AND";
-//		strarrOperators[2] = "OR";
-//		// Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
-//		// while (resultSet.hasNext()) {
-//		// System.out.println(resultSet.next());
-//		// }
-//		Vector<Object> v = dbApp.keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, "name");
-//		System.out.println(dbApp.queryOptimizer(v));
+		// DBApp dbApp = new DBApp();
+		// SQLTerm[] arrSQLTerms;
+		// arrSQLTerms = new SQLTerm[4];
+		// arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
+		// arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.0);
+		// arrSQLTerms[2] = new SQLTerm("Student", "gpa", "=", 100.0);
+		// arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
+		// String[] strarrOperators = new String[3];
+		// strarrOperators[0] = "AND";
+		// strarrOperators[1] = "AND";
+		// strarrOperators[2] = "OR";
+		// // Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+		// // while (resultSet.hasNext()) {
+		// // System.out.println(resultSet.next());
+		// // }
+		// Vector<Object> v = dbApp.keepTrackofClusteringKeyValue(arrSQLTerms,
+		// strarrOperators, "name");
+		// System.out.println(dbApp.queryOptimizer(v));
 
 	}
 }
