@@ -32,7 +32,7 @@ public class GenerateTests {
         htblColNameType.put("gpa", "java.lang.Double");
         htblColNameType.put("age", "java.lang.Integer");
         dbApp.createTable("students", "id", htblColNameType);
-
+        dbApp.createIndex("students", "id", "idIndex");
         Vector<Integer> ids = new Vector<>();
         Vector<Integer> chosenIds = new Vector<>();
         Vector<String> names = new Vector<>();

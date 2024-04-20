@@ -471,7 +471,6 @@ public class DBApp {
 					return;
 				}
 				Tuple row = records.get(i);
-				System.out.println("Tuple: " + row);
 				Hashtable<String, Object> hashtable = row.getHtblTuple();
 				// colName,indexName
 				for (String colName : otherIndices.keySet()) {
@@ -497,14 +496,13 @@ public class DBApp {
 
 			Vector<String> v = b.search(clusteringKeyValue);
 			if (v == null) {
-				throw new DBAppException("UPDATE TABLE: Record not found in table");
+				return;
 			} else {
 				// already know it'll be one value
 				// System.out.println("UPDATE USING INDEX");
 				String pageNum = v.get(0);
 				Page p = deserializePage(strTableName + "_" + pageNum);
 				int i = p.binarySearch(clusteringKey, clusteringKeyValue); // rowNumber
-				// System.out.println(i);
 				Vector<Tuple> records = p.getRecords();
 				Tuple row = records.get(i);
 				Hashtable<String, Object> hashtable = row.getHtblTuple();
@@ -545,7 +543,6 @@ public class DBApp {
 
 		// case # Special : if hashtable is empty empty all records from table
 		if (htblColNameValue.size() == 0) {
-			System.out.println("entered zero page case");
 			Table t = deserializeTable(strTableName);
 			Vector<String> strpages = t.getStrPages();
 			for (String strpage : strpages) {
@@ -577,7 +574,6 @@ public class DBApp {
 		// case 1: if the hashtable contains a clustering key to delete and it has an
 		// index
 		else if (htblColNameValue.get(clusteringKey) != null && indexedColumns.get(clusteringKey) != null) {
-			System.out.println("hashtable contains a clustering key to delete and it has an index");
 			Hashtable<String, Object> htblvalue = null;
 			bplustree b = deserializeIndex(indexedColumns.get(clusteringKey));
 			Vector<String> v = b.search(htblColNameValue.get(clusteringKey));
@@ -632,7 +628,6 @@ public class DBApp {
 		// case 2: see if existing indices can limit the search or are they of no use
 		// like no index case
 		else {
-			System.out.println("see if existing indices can limit the search or are they of no use like no index case");
 			Hashtable<String, String> usefulIndices = new Hashtable<>();
 			for (String key : indexedColumns.keySet()) {
 				if (htblColNameValue.containsKey(key)) {
@@ -643,7 +638,6 @@ public class DBApp {
 			if (usefulIndices.size() == 0) {
 				// case 1.1: clustering key is in hashtable so use binary search
 				if (htblColNameValue.containsKey(clusteringKey)) {
-					System.out.println("case 1.1: clustering key is in hashtable so use binary search");
 					Page p = binarySearchWithoutIndex(strTableName, clusteringKey,
 							htblColNameValue.get(clusteringKey));
 					if (p == null)
@@ -691,7 +685,6 @@ public class DBApp {
 				// case 1.2: clustering key is not in hashtable
 				// can have one or more values so search linearly
 				else {
-					System.out.println("case 1.2: clustering key is not in hashtable");
 					Table t = deserializeTable(strTableName);
 					for (String pageName : t.getStrPages()) {
 						Page p = deserializePage(pageName);
@@ -739,7 +732,6 @@ public class DBApp {
 				}
 			} else {
 				// subcase 2: one or more useful indices
-				System.out.println("subcase 2: one or more useful indices");
 				HashSet<String> pageNum = new HashSet<>();
 				boolean first = true;
 				for (String key : usefulIndices.keySet()) {
@@ -767,7 +759,6 @@ public class DBApp {
 
 				// case 2.1: binary search if clusteringKey in hashtable
 				if (htblColNameValue.get(clusteringKey) != null) {
-					System.out.println("case 2.1: binary search if clusteringKey in hashtable");
 					for (String pageno : pageNum) {
 
 						// get pagename from page no
@@ -826,7 +817,6 @@ public class DBApp {
 					// Note: indices may output more than one page for that case since they are not
 					// on the clustering column
 					// linear search if no clusteringKey in hashtable
-					System.out.println("case 2.2: linear no clusteringKey");
 					Table t = deserializeTable(strTableName);
 					for (String num : pageNum) {
 						Page p = deserializePage(strTableName + "_" + num);
@@ -2530,57 +2520,33 @@ public class DBApp {
 
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
-		// try {
-		// String filePath = "dbms/src/main/resources/metadata.csv";
-		// FileWriter fw = new FileWriter(filePath, false);
-		// fw.write("");
-		// fw.close();
 
-		// String[] directories = {
-		// "dbms/src/main/resources/Tables/",
-		// "dbms/src/main/resources/Pages/",
-		// "dbms/src/main/resources/Indices/"
-		// };
+		String strTableName = "Student";
+		DBApp dbApp = new DBApp();
+		Hashtable htblColNameType = new Hashtable();
+		htblColNameType.put("id", "java.lang.Integer");
+		htblColNameType.put("name", "java.lang.String");
+		htblColNameType.put("gpa", "java.lang.double");
+		dbApp.createTable(strTableName, "id", htblColNameType);
+		dbApp.createIndex(strTableName, "gpa", "gpaINDEX");
+		dbApp.createIndex(strTableName, "id", "idINDEX");
+		String[] names = { "john", "ahmed", "mohamed", "zoz" };
+		for (int i = 0; i < 20; i++) {
 
-		// for (String directory : directories) {
-		// try (DirectoryStream<Path> stream =
-		// Files.newDirectoryStream(Paths.get(directory), "*.ser")) {
-		// for (Path entry : stream) {
-		// Files.delete(entry);
-		// }
-		// }
-		// }
-
-		// } catch (IOException ioe) {
-		// System.err.println("IOException: " + ioe.getMessage());
-		// }
-		// String strTableName = "Student";
-		// DBApp dbApp = new DBApp();
-		// Hashtable htblColNameType = new Hashtable();
-		// htblColNameType.put("id", "java.lang.Integer");
-		// htblColNameType.put("name", "java.lang.String");
-		// htblColNameType.put("gpa", "java.lang.double");
-		// dbApp.createTable(strTableName, "id", htblColNameType);
-		// dbApp.createIndex(strTableName, "gpa", "gpaINDEX");
-		// dbApp.createIndex(strTableName, "id", "idINDEX");
-		// String[] names = { "john", "ahmed", "mohamed", "zoz" };
-		// for (int i = 0; i < 20; i++) {
-
-		// Hashtable htblColNameValue = new Hashtable();
-		// htblColNameValue.put("id", i);
-		// htblColNameValue.put("name", names[i % 4]);
-		// htblColNameValue.put("gpa", Math.abs(new Double(i) - 0.5));
-		// dbApp.insertIntoTable(strTableName, htblColNameValue);
-		// }
+			Hashtable htblColNameValue = new Hashtable();
+			htblColNameValue.put("id", i);
+			htblColNameValue.put("name", names[i % 4]);
+			htblColNameValue.put("gpa", Math.abs(new Double(i) - 0.5));
+			dbApp.insertIntoTable(strTableName, htblColNameValue);
+		}
 		// SQLTerm[] sqlTerms = new SQLTerm[4];
 		// sqlTerms[0] = new SQLTerm(strTableName, "name", "=", "john");
 		// sqlTerms[2] = new SQLTerm(strTableName, "id", ">", 0);
 		// sqlTerms[1] = new SQLTerm(strTableName, "gpa", "=", 4.5);
 		// sqlTerms[3] = new SQLTerm(strTableName, "gpa", ">=", 11.0);
 		// String[] strOperators = { "XOR", "OR", "AND" };
-		DBApp dbApp = new DBApp();
 
-		dbApp.deleteFromTable("Student", new Hashtable<>());
+		// dbApp.deleteFromTable("Student", new Hashtable<>());
 
 		System.out.println("BREAK");
 		System.out.println(dbApp.deserializeIndex("idINDEX"));
