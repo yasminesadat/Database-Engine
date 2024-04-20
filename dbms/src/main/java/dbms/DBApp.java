@@ -1,14 +1,17 @@
 package dbms;
 
 /** * @author Wael Abouelsaadat */
+import antlr.SQLLexer;
+import antlr.SQLParser;
+import antlr.myVisitor;
 import bPlusTree.bplustree;
 import bPlusTree.bplustree.DictionaryPair;
 import bPlusTree.bplustree.LeafNode;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
 
-import java.util.Iterator;
-import java.util.Properties;
-import java.util.Stack;
-import java.util.Vector;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -21,9 +24,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Hashtable;
 import java.lang.Integer;
 import java.lang.Double;
 import java.lang.String;
@@ -31,13 +31,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.antlr.v4.runtime.CharStreams.fromFileName;
+
 public class DBApp {
 	// generic
-	private static final String METADATA_PATH = "dbms/src/main/resources/metadata.csv";
-	private static final String CONFIG_FILE_PATH = "dbms/src/main/resources/DBApp.config";
-	private static final String TABLES_DIR = "dbms/src/main/resources/Tables/";
-	private static final String PAGES_DIR = "dbms/src/main/resources/Pages/";
-	private static final String INDICES_DIR = "dbms/src/main/resources/Indices/";
+	private static final String METADATA_PATH = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\metadata.csv";
+	private static final String CONFIG_FILE_PATH = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\DBApp.config";
+	private static final String TABLES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Tables\\";
+	private static final String PAGES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Pages\\";
+	private static final String INDICES_DIR = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\resources\\Indices\\";
 
 	// for JUNIT tests
 	// private static final String METADATA_PATH = "E:/Semester 6/Database
@@ -2359,28 +2361,95 @@ public class DBApp {
 		return false;
 	}
 
+	// below method returns Iterator with result set if passed
+	// strbufSQL is a select, otherwise returns null.
+	public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
+		String source = "C:\\Users\\Zrafa\\IdeaProjects\\Database-Engine\\dbms\\src\\main\\java\\antlr\\test.txt";
+		BufferedWriter writer = null;
+		try {
+			writer = new BufferedWriter(new FileWriter(source, false));
+		} catch (IOException e) {
+			throw new DBAppException(e.getMessage());
+		}
+		try {
+			writer.write(strbufSQL.toString());
+		} catch (IOException e) {
+			throw new DBAppException(e.getMessage());
+		}
+		try {
+			writer.close();
+		} catch (IOException e) {
+			throw new DBAppException(e.getMessage());
+		}
+		CharStream cs = null;
+		try {
+			cs = fromFileName(source);
+		} catch (IOException e) {
+			throw new DBAppException(e.getMessage());
+		}
+		antlr.SQLLexer lexer = new SQLLexer(cs);
+		CommonTokenStream token = new CommonTokenStream(lexer);
+		SQLParser parser = new SQLParser(token);
+		ParseTree tree = parser.parse();
+
+		myVisitor visitor = new myVisitor();
+		visitor.visit(tree);
+
+
+		return visitor.getResultIterator();
+	}
+
+
+
+
 	/////////////////////////////////////////// END
 	/////////////////////////////////////////// //////////////////////////////////////////////////////////
 
 	@SuppressWarnings({ "removal", "unchecked", "rawtypes", "unused" })
 	public static void main(String[] args) throws DBAppException {
+
+
 		DBApp dbApp = new DBApp();
-		SQLTerm[] arrSQLTerms;
-		arrSQLTerms = new SQLTerm[4];
-		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
-		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.0);
-		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "=", 100.0);
-		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
-		String[] strarrOperators = new String[3];
-		strarrOperators[0] = "AND";
-		strarrOperators[1] = "AND";
-		strarrOperators[2] = "OR";
-		// Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
-		// while (resultSet.hasNext()) {
-		// System.out.println(resultSet.next());
-		// }
-		Vector<Object> v = dbApp.keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, "name");
-		System.out.println(dbApp.queryOptimizer(v));
+
+
+		//SQL QUERY FORMAT
+		//CREATE TABLE "Student" ( "id" INT PRIMARY KEY,"gpa" DOUBLE,"name" STRING);
+		//CREATE INDEX "nameIndex" ON "Students" ("name");
+		//INSERT INTO "Students" ("name","id","gpa") VALUES ("Hi",3,4.5);
+		//UPDATE "Student" SET "name"="John","age"=2,"gpa"=2.34 WHERE "id"=5;
+		//DELETE FROM "Student" WHERE "name"="Ahmed" AND "id=3" AND "gpa"=1.2;
+		//SELECT * FROM "Student" WHERE "name"="Ahmed" AND "age">10 OR "gpa"<3;
+
+
+
+		//EXECUTE THE QUERY
+		Scanner sc=new Scanner(System.in);
+		String sbTest=sc.nextLine();
+		Iterator<Tuple> result = dbApp.parseSQL(new StringBuffer(sbTest));
+
+
+
+
+
+
+
+//		DBApp dbApp = new DBApp();
+//		SQLTerm[] arrSQLTerms;
+//		arrSQLTerms = new SQLTerm[4];
+//		arrSQLTerms[0] = new SQLTerm("Student", "name", "=", "Zaky Noor");
+//		arrSQLTerms[1] = new SQLTerm("Student", "gpa", ">=", 0.0);
+//		arrSQLTerms[2] = new SQLTerm("Student", "gpa", "=", 100.0);
+//		arrSQLTerms[3] = new SQLTerm("Student", "name", "!=", "John Noor");
+//		String[] strarrOperators = new String[3];
+//		strarrOperators[0] = "AND";
+//		strarrOperators[1] = "AND";
+//		strarrOperators[2] = "OR";
+//		// Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+//		// while (resultSet.hasNext()) {
+//		// System.out.println(resultSet.next());
+//		// }
+//		Vector<Object> v = dbApp.keepTrackofClusteringKeyValue(arrSQLTerms, strarrOperators, "name");
+//		System.out.println(dbApp.queryOptimizer(v));
 
 	}
 }
